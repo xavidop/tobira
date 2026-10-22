@@ -2,6 +2,7 @@ package grid
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -45,20 +46,37 @@ func TestObjectAndListCellsPreviewOnOneLine(t *testing.T) {
 	}
 }
 
+// A preview reads only what it shows. The check compares objects of 20k and
+// 200k members instead of using a wall-clock limit, so a slow or
+// race-instrumented runner does not fail it: bounded work takes about as
+// long for both, a walk over every member ten times longer.
 func TestPreviewOfAHugeObjectIsBounded(t *testing.T) {
-	ms := make([]driver.Member, 200000)
-	for i := range ms {
-		ms[i] = mem(fmt.Sprintf("k%d", i), driver.String(strings.Repeat("x", 50)))
+	object := func(n int) driver.Value {
+		ms := make([]driver.Member, n)
+		for i := range ms {
+			ms[i] = mem(fmt.Sprintf("k%d", i), driver.String(strings.Repeat("x", 50)))
+		}
+		return driver.ObjectValue(ms...)
 	}
-	v := driver.ObjectValue(ms...)
-	start := time.Now()
-	got := previewText(v, 4*maxColWidth)
-	if len(got) > 8*maxColWidth {
+	small, large := object(20000), object(200000)
+	if got := previewText(large, 4*maxColWidth); len(got) > 8*maxColWidth {
 		t.Fatalf("preview is %d bytes long", len(got))
 	}
-	if d := time.Since(start); d > 50*time.Millisecond {
-		t.Fatalf("preview took %v", d)
+	ts, tl := previewTime(small), previewTime(large)
+	if tl > 4*ts+10*time.Millisecond {
+		t.Fatalf("preview took %v at 20k members and %v at 200k: not bounded", ts, tl)
 	}
+}
+
+// previewTime is the fastest of three previews of v.
+func previewTime(v driver.Value) time.Duration {
+	best := time.Duration(math.MaxInt64)
+	for range 3 {
+		start := time.Now()
+		previewText(v, 4*maxColWidth)
+		best = min(best, time.Since(start))
+	}
+	return best
 }
 
 func TestFormatHookRendersEscapedText(t *testing.T) {

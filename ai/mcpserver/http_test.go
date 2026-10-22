@@ -299,6 +299,10 @@ var tokenLine = regexp.MustCompile(`MCP HTTP token: ([0-9a-f]+) \(pass as Author
 
 func TestHTTPGeneratedTokenIsPrintedOnce(t *testing.T) {
 	r := newEnv(t).serveHTTP(t, config.MCP{Expose: []string{"lite"}}, HTTP{})
+	// The token line follows the listening line the server is ready on.
+	for deadline := time.Now().Add(5 * time.Second); !tokenLine.MatchString(r.stderr.String()) && time.Now().Before(deadline); {
+		time.Sleep(10 * time.Millisecond)
+	}
 	ms := tokenLine.FindAllStringSubmatch(r.stderr.String(), -1)
 	if len(ms) != 1 {
 		t.Fatalf("stderr has %d token lines, want 1: %q", len(ms), r.stderr.String())

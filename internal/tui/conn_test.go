@@ -439,7 +439,7 @@ func TestAppGridKeptUntilWriteSucceeds(t *testing.T) {
 	h.typ("2") // rename: the connection is closed and the grid must go
 	// No settle: the write result has not been fed back yet.
 	h.send(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
-	h.send(<-h.ch) // the SavedMsg
+	h.sendSaved() // the SavedMsg
 	if !h.m.saving {
 		t.Fatal("write should be in flight")
 	}
@@ -469,7 +469,7 @@ func TestAppFailedWriteKeepsGridAndResumesLoad(t *testing.T) {
 	}
 	h.typ("2")
 	h.send(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
-	h.send(<-h.ch) // the SavedMsg: the write starts and the load is cancelled
+	h.sendSaved() // the SavedMsg: the write starts and the load is cancelled
 	if h.m.gr.Loading() {
 		t.Fatal("load must be cancelled before the write")
 	}
@@ -741,7 +741,7 @@ func TestAppFailedEditResumesWithSortAndFilterIntact(t *testing.T) {
 	}
 	h.typ("2")
 	h.send(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
-	h.send(<-h.ch) // the SavedMsg: the write starts and the load is cancelled
+	h.sendSaved() // the SavedMsg: the write starts and the load is cancelled
 	h.fake.SetLatency(0)
 	h.pump(func() bool { return !h.m.saving }) // the write fails
 	h.pump(func() bool { return !h.m.gr.Loading() && h.m.gr.Status().Loaded > 0 })
@@ -767,7 +767,7 @@ func TestAppUnchangedEditResumesTheCancelledLoad(t *testing.T) {
 	h.m.focus = focusSidebar
 	h.step("E")
 	h.send(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl}) // save without changing anything
-	h.send(<-h.ch)                                       // the SavedMsg
+	h.sendSaved()                                        // the SavedMsg
 	if h.m.gr.Loading() {
 		t.Fatal("the load must be cancelled while the write runs")
 	}

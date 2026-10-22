@@ -27,4 +27,4 @@ connections                 │local ▸ main ▸ cpu · 120 rows
                             │    │   •  •  ││  •  •  ││     •  •  ││  •  •  ││     •  •  ││  •      
                             │ 0.5│         •         •            •         •            •          
                             │01:00 … 01:59   min 0.5  max 22.5  last 5.5                            
-local › main › cpu  row 1 of 120  T                           f1 help  : cmd  f filter  q quit  ●
+local › main › cpu  row 1 of 120  T f1 help  : cmd  f filter  q quit  ●

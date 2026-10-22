@@ -27,6 +27,7 @@ import (
 	"github.com/xavidop/tobira/internal/config"
 	"github.com/xavidop/tobira/internal/secrets"
 	"github.com/xavidop/tobira/internal/session"
+	"github.com/xavidop/tobira/internal/tui/connform"
 	"github.com/xavidop/tobira/internal/tui/detail"
 	"github.com/xavidop/tobira/internal/tui/grid"
 	"github.com/xavidop/tobira/internal/tui/tuitest"
@@ -126,6 +127,24 @@ func (h *harness) send(msg tea.Msg) {
 	h.msgs = append(h.msgs, msg)
 	_, cmd := h.m.Update(msg)
 	h.run(cmd)
+}
+
+// sendSaved delivers queued command results in order up to and including
+// the connection form's SavedMsg; a tick may be queued ahead of it.
+func (h *harness) sendSaved() {
+	h.t.Helper()
+	deadline := time.After(5 * time.Second)
+	for {
+		select {
+		case msg := <-h.ch:
+			h.send(msg)
+			if _, ok := msg.(connform.SavedMsg); ok {
+				return
+			}
+		case <-deadline:
+			h.t.Fatal("no SavedMsg within 5s")
+		}
+	}
 }
 
 // pump feeds queued command results to the model until cond holds.
@@ -237,11 +256,13 @@ func (h *harness) openPeople() {
 	h.until("Ada Lovelace")
 }
 
-var durations = regexp.MustCompile(`<1ms|\d+ms|\d+\.\ds`)
+// durations matches a load time and the padding after it: the padding
+// shrinks as the time grows wider ("1ms", "12ms"), so both are masked.
+var durations = regexp.MustCompile(`(?:<1ms|\d+ms|\d+\.\ds)( +|$)`)
 
 func golden(t *testing.T, name, got string) {
 	t.Helper()
-	got = durations.ReplaceAllString(got, "T") // load times vary run to run
+	got = durations.ReplaceAllString(got, "T ") // load times vary run to run
 	path := filepath.Join("testdata", name+".golden")
 	if updateGolden() {
 		if err := os.MkdirAll("testdata", 0o755); err != nil {

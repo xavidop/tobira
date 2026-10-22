@@ -649,7 +649,7 @@ func TestEditorRunCancelledBeforeConnectionEdit(t *testing.T) {
 	h.step("E")
 	h.typ("2") // a rename closes the connection
 	h.send(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
-	h.send(<-h.ch) // the SavedMsg: the write starts
+	h.sendSaved() // the SavedMsg: the write starts
 	if h.m.running != nil || h.m.tabs[0].state != tabCancelled {
 		t.Fatalf("run not cancelled before the write: running=%v", h.m.running != nil)
 	}
