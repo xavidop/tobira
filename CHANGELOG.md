@@ -2,6 +2,13 @@
 
 All notable changes to tobira are listed here, newest first. Versions follow [Semantic Versioning](https://semver.org/). Each new release is added at the top, with notes generated from the commit messages.
 
+# [1.1.0](https://github.com/xavidop/tobira/compare/v1.0.1...v1.1.0) (2026-10-22)
+
+
+### Features
+
+* **tui:** teach the first screen, show tool calls whole, name the connection to the AI ([#34](https://github.com/xavidop/tobira/issues/34)) ([d4b7c38](https://github.com/xavidop/tobira/commit/d4b7c386e9004516e0172f0c69d470d2e1ba1e42)), closes [#33](https://github.com/xavidop/tobira/issues/33) [#23](https://github.com/xavidop/tobira/issues/23) [#32](https://github.com/xavidop/tobira/issues/32) [#23](https://github.com/xavidop/tobira/issues/23) [#24](https://github.com/xavidop/tobira/issues/24) [#25](https://github.com/xavidop/tobira/issues/25) [#26](https://github.com/xavidop/tobira/issues/26) [#27](https://github.com/xavidop/tobira/issues/27) [#28](https://github.com/xavidop/tobira/issues/28) [#29](https://github.com/xavidop/tobira/issues/29) [#30](https://github.com/xavidop/tobira/issues/30) [#31](https://github.com/xavidop/tobira/issues/31) [#32](https://github.com/xavidop/tobira/issues/32)
+
 ## [1.0.1](https://github.com/xavidop/tobira/compare/v1.0.0...v1.0.1) (2026-10-22)
 
 
