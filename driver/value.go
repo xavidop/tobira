@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"iter"
 	"math"
 	"reflect"
 	"slices"
@@ -229,6 +230,48 @@ func (v Value) AsList() ([]Value, bool) {
 		return nil, false
 	}
 	return slices.Clone(v.p.([]Value)), true
+}
+
+// Len is the number of elements of a List value or members of an Object
+// value, and 0 for any other type.
+func (v Value) Len() int {
+	switch v.typ {
+	case TypeList:
+		return len(v.p.([]Value))
+	case TypeObject:
+		return len(v.p.(Object))
+	}
+	return 0
+}
+
+// Elements yields the elements of a List value in order without copying
+// them; it yields nothing for any other type.
+func (v Value) Elements() iter.Seq2[int, Value] {
+	return func(yield func(int, Value) bool) {
+		if v.typ != TypeList {
+			return
+		}
+		for i, e := range v.p.([]Value) {
+			if !yield(i, e) {
+				return
+			}
+		}
+	}
+}
+
+// Members yields the members of an Object value in order without copying
+// them; it yields nothing for any other type.
+func (v Value) Members() iter.Seq2[int, Member] {
+	return func(yield func(int, Member) bool) {
+		if v.typ != TypeObject {
+			return
+		}
+		for i, m := range v.p.(Object) {
+			if !yield(i, m) {
+				return
+			}
+		}
+	}
 }
 
 // AsObject returns a copy of the members of an Object value.

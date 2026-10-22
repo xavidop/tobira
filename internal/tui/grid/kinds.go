@@ -178,9 +178,11 @@ func previewText(v driver.Value, budget int) string {
 }
 
 func writePreview(b *strings.Builder, v driver.Value, budget int) {
-	if obj, ok := v.AsObject(); ok {
+	// Members and Elements read in place: AsObject and AsList copy every
+	// member of a huge value before the first is shown.
+	if v.Type() == driver.TypeObject {
 		b.WriteByte('{')
-		for i, m := range obj {
+		for i, m := range v.Members() {
 			if b.Len() > budget {
 				b.WriteString("…")
 				return
@@ -195,9 +197,8 @@ func writePreview(b *strings.Builder, v driver.Value, budget int) {
 		b.WriteByte('}')
 		return
 	}
-	list, _ := v.AsList()
 	b.WriteByte('[')
-	for i, e := range list {
+	for i, e := range v.Elements() {
 		if b.Len() > budget {
 			b.WriteString("…")
 			return
@@ -219,16 +220,16 @@ func writeMember(b *strings.Builder, v driver.Value, budget int) {
 		s, _ := v.AsText()
 		b.WriteString(`"` + boundedPreview(s, budget) + `"`)
 	case driver.TypeObject:
-		if obj, _ := v.AsObject(); len(obj) == 0 {
+		if v.Len() == 0 {
 			b.WriteString("{}")
 		} else {
 			b.WriteString("{…}")
 		}
 	case driver.TypeList:
-		if list, _ := v.AsList(); len(list) == 0 {
+		if v.Len() == 0 {
 			b.WriteString("[]")
 		} else {
-			b.WriteString("[" + strconv.Itoa(len(list)) + "]")
+			b.WriteString("[" + strconv.Itoa(v.Len()) + "]")
 		}
 	default:
 		b.WriteString(boundedPreview(v.String(), budget))
