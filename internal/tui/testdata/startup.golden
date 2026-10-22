@@ -1,6 +1,13 @@
 connections                 │no collection open                                                     
 ▸ ● local                   │select a collection in the sidebar and press enter                     
 ▸ ● ro                      │                                                                       
+                            │enter   open the selected connection or collection                     
+                            │n       add a connection                                               
+                            │E       edit the selected connection                                   
+                            │/       filter the sidebar                                             
+                            │ctrl+e  open the query editor                                          
+                            │:       command palette: export, theme, keymap, ...                    
+                            │f1/?    every key and command                                          
                             │                                                                       
                             │                                                                       
                             │                                                                       
@@ -20,11 +27,4 @@ connections                 │no collection open
                             │                                                                       
                             │                                                                       
                             │                                                                       
-                            │                                                                       
-                            │                                                                       
-                            │                                                                       
-                            │                                                                       
-                            │                                                                       
-                            │                                                                       
-                            │                                                                       
-local                                                            f1 help  : cmd  f filter  q quit  ●
+local                                         f1 help  enter open  / filter  n add  : cmd  q quit  ●

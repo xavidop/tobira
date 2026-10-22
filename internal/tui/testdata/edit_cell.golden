@@ -27,4 +27,4 @@ connections                 │local ▸ main ▸ tobira_people · 57 rows
                             │  24    Barbara Liskov     user24@example.com  44    388.12  false   2…
 edit name (string)> Grace                                                                           
 enter save · esc cancel · ctrl+n NULL                                                               
-local › main › tobira_people  row 1 of 57  T f1 help  : cmd  f filter  q quit  3 pending  ●
+local › main › tobira_people  row 1 of 57  T f1 help  enter detail  f filter  3 pending  ●

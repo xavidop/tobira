@@ -48,11 +48,14 @@ config file.
   loaded is listed after the working ones in the failed colour; select it to see what is wrong and
   the keys to edit or delete it (see [broken entries](/docs/connections/#broken-entries)).
 - **Grid**: the rows of the open collection, loaded 200 at a time, so large tables stay fast to
-  scroll. If a page fails to load, `enter` in the grid tries again. Column widths count characters
+  scroll. Until a collection is open, the panel lists the keys to start with: open, add or edit a
+  connection, filter the sidebar, the query editor, the palette and help. If a page fails to load, `enter` in the grid tries again. Column widths count characters
   as the terminal draws them, so emoji and combining marks are never split.
 - **Status bar**: breadcrumb, row position and load time, `N pending` edits, `TX` while a
   [transaction](/docs/editing/#transactions) is open, the [read-only badge](#read-only),
-  connection status, export progress and errors. An error stays until the next key press.
+  connection status, export progress and errors. An error stays until the next key press. On
+  the right, the key hints for the focused pane, most useful first: a narrow terminal drops the
+  last ones. `F1` or `?` lists every key.
 - **Filter bar and command palette** open below the panes when you use them.
 - **Result tabs and query editor** share the grid's column when the editor is open: a tab bar on
   top, the grid of the active tab, then the editor at the bottom. On a short terminal the focused

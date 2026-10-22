@@ -104,6 +104,7 @@ func (t *Toolset) VectorSearchable(ctx context.Context) bool {
 // rows obey the row policy and are recorded like query's, as
 // "similar <collection> k=<k> <"text"|vector dim=N>".
 func (t *Toolset) Similar(ctx context.Context, in SimilarInput) (RowsOutput, error) {
+	in.Connection = t.scopedConn(ctx, in.Connection)
 	return run(t, ctx, NameSimilar, in.Connection, in.report(), func(call, turn context.Context) (RowsOutput, error) {
 		if strings.TrimSpace(in.Collection) == "" {
 			return RowsOutput{}, errors.New("collection is required: call list_collections for the names")

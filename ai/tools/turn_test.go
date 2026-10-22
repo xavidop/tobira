@@ -207,6 +207,26 @@ func TestConsentRequestSaysWhat(t *testing.T) {
 	}
 }
 
+// A turn bound to one connection fills an empty connection argument with
+// it, so the model need not call list_connections first; a turn bound to
+// none, or to several, still refuses the empty name.
+func TestEmptyConnectionMeansTheScopedOne(t *testing.T) {
+	e := newEnv(t)
+	o, _ := e.ts.ListNamespaces(WithConnections(ctx, "dev"), ListNamespacesInput{})
+	if o.Error != "" || len(o.Namespaces) == 0 {
+		t.Fatalf("scoped list_namespaces without a connection = %+v", o)
+	}
+	q, _ := e.ts.Query(WithConnections(ctx, "dev"), QueryInput{Query: "select * from orders"})
+	if q.Error != "" {
+		t.Fatalf("scoped query without a connection: %q", q.Error)
+	}
+	for name, turn := range map[string]context.Context{"unscoped": ctx, "two": WithConnections(ctx, "dev", "dev2")} {
+		if o, _ := e.ts.ListNamespaces(turn, ListNamespacesInput{}); !strings.Contains(o.Error, "connection is required") {
+			t.Errorf("%s turn without a connection = %q", name, o.Error)
+		}
+	}
+}
+
 // A turn bound to a connection (WithConnections, ToolDeps.Connections) can
 // name no other: every tool refuses it with the text of a name that is not
 // configured, list_connections leaves it out, execute never asks about it,

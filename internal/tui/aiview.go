@@ -105,7 +105,7 @@ func (a *Model) aiEntryLines(e *aiEntry, w int, latest bool) []string {
 	case entryModel:
 		return a.markdownLines(e, w)
 	case entryTool:
-		return []string{st.Dim.Render(toolLine(e.conn, e.tc, w))}
+		return toolLines(st.Dim, e.conn, e.tc, w)
 	case entryProposal:
 		return a.proposalLines(e.text, w, latest)
 	case entryFooter:
@@ -116,22 +116,23 @@ func (a *Model) aiEntryLines(e *aiEntry, w int, latest bool) []string {
 	return wrapStyled(st.Dim, e.text, w)
 }
 
-// toolLine is a tool call on one line of w columns: its input is cut so
-// that the outcome stays visible.
-func toolLine(conn string, tc assistant.ToolCall, w int) string {
-	head := "▸ " + query.EscapeControls(tc.Name) + " on " + query.EscapeControls(conn) + ": "
-	tail := ""
+// toolLines draws a tool call whole: name, connection, input and outcome,
+// wrapped to w columns with the continuation lines indented under the
+// marker, so an error or a long query is never cut short.
+func toolLines(s lipgloss.Style, conn string, tc assistant.ToolCall, w int) []string {
+	text := "▸ " + tc.Name + " on " + conn + ": " + tc.Input
 	switch {
 	case tc.Err != "":
-		tail = query.Truncate(" → error: "+query.EscapeControls(tc.Err), max(w/2, 1))
+		text += " → error: " + tc.Err
 	case tc.Rows >= 0:
-		tail = fmt.Sprintf(" → %d %s", tc.Rows, plural(tc.Rows, "row", "rows"))
+		text += fmt.Sprintf(" → %d %s", tc.Rows, plural(tc.Rows, "row", "rows"))
 	}
-	input := query.EscapeControls(tc.Input)
-	if avail := w - query.DisplayWidth(head) - query.DisplayWidth(tail); avail >= 8 {
-		input = query.Truncate(input, avail)
+	const indent = "  "
+	lines := wrapStyled(s, text, max(w-len(indent), 1))
+	for i := 1; i < len(lines); i++ {
+		lines[i] = s.Render(indent) + lines[i]
 	}
-	return query.Truncate(head+input+tail, w)
+	return lines
 }
 
 // proposalLines draws a proposed query in a bordered block, with the keys

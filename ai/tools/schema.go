@@ -156,6 +156,7 @@ func (t *Toolset) ListConnections(ctx context.Context) ([]Connection, error) {
 
 // ListNamespaces lists a connection's namespaces.
 func (t *Toolset) ListNamespaces(ctx context.Context, in ListNamespacesInput) (NamespacesOutput, error) {
+	in.Connection = t.scopedConn(ctx, in.Connection)
 	return run(t, ctx, NameListNamespaces, in.Connection, in, func(call, _ context.Context) (NamespacesOutput, error) {
 		c, err := t.open(call, in.Connection)
 		if err != nil {
@@ -177,6 +178,7 @@ func (t *Toolset) ListNamespaces(ctx context.Context, in ListNamespacesInput) (N
 
 // ListCollections lists the collections of a namespace.
 func (t *Toolset) ListCollections(ctx context.Context, in ListCollectionsInput) (CollectionsOutput, error) {
+	in.Connection = t.scopedConn(ctx, in.Connection)
 	return run(t, ctx, NameListCollections, in.Connection, in, func(call, _ context.Context) (CollectionsOutput, error) {
 		c, err := t.open(call, in.Connection)
 		if err != nil {
@@ -199,6 +201,7 @@ func (t *Toolset) ListCollections(ctx context.Context, in ListCollectionsInput) 
 
 // Describe describes one collection, without its DDL or sample rows.
 func (t *Toolset) Describe(ctx context.Context, in DescribeInput) (DescribeOutput, error) {
+	in.Connection = t.scopedConn(ctx, in.Connection)
 	return run(t, ctx, NameDescribe, in.Connection, in, func(call, _ context.Context) (DescribeOutput, error) {
 		c, err := t.open(call, in.Connection)
 		if err != nil {

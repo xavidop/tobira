@@ -210,7 +210,7 @@ func (f *flows) askTurn(ctx context.Context, t *turn, in askInput) (proposalOutp
 	}
 	offered := schemaTools(t.ts, scope)
 	msgs, r, err := f.render(ctx, promptAsk, map[string]any{
-		"dialect": sc.dialect, "kind": sc.kind, "schema": sc.text,
+		"dialect": sc.dialect, "kind": sc.kind, "schema": sc.text, "connection": scope.Conn,
 		"question": f.a.scrub(scope.Conn, in.Question),
 		"history":  f.a.history(scope.Conn, turns(in.History)),
 		"tools":    len(offered) > 0,
@@ -282,7 +282,7 @@ func (f *flows) answerTurn(ctx context.Context, t *turn, in answerInput) (answer
 		ctx = tools.WithExecute(ctx)
 	}
 	msgs, r, err := f.render(ctx, promptAnswer, map[string]any{
-		"dialect": sc.dialect, "kind": sc.kind, "schema": sc.text,
+		"dialect": sc.dialect, "kind": sc.kind, "schema": sc.text, "connection": scope.Conn,
 		"question": f.a.scrub(scope.Conn, in.Question),
 		"history":  f.a.history(scope.Conn, turns(in.History)),
 		"execute":  in.AllowExecute,

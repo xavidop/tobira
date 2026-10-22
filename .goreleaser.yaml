@@ -96,10 +96,22 @@ homebrew_casks:
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     homepage: "https://xavidop.github.io/tobira/"
-    description: "Every database, one terminal."
-    hooks:
-      post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/tobira"]
-          end
+    # Homebrew rejects a description that ends with a period.
+    description: "Every database, one terminal"
+    # Removes the macOS quarantine attribute so the unsigned binary runs.
+    # Homebrew deprecated the Ruby postflight block that hooks.post.install
+    # writes; its replacement, postflight_steps, is declarative and cannot
+    # read staged_path, so the path is the {{staged_path}} token instead.
+    # GoReleaser 2.18 has no install_steps option yet (2.19 adds
+    # hooks.post.install_steps), so the block goes in custom_block, which
+    # renders at the top of the cask. The whole cask is run through
+    # GoReleaser's templates, hence {{ "{{" }} to emit Homebrew's braces.
+    custom_block: |
+      postflight_steps do
+        on_macos do
+          run "/usr/bin/xattr",
+              args:           ["-dr", "com.apple.quarantine", "{{ "{{" }}staged_path}}/tobira"],
+              writable_paths: ["tobira"],
+              writable_base:  :staged_path
+        end
+      end

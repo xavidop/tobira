@@ -27,4 +27,4 @@ connections                 │local ▸ main ▸ pages · 210 rows
                             │NULL    NULL             NULL         NULL          —                  
                             │NULL    NULL             NULL         NULL          —                  
                             │NULL    NULL             NULL         NULL          —                  
-local › main › pages  row 1 of 210  T f1 help  : cmd  f filter  q quit  ●
+local › main › pages  row 1 of 210  T f1 help  enter detail  f filter  s sort  e edit  ●

@@ -35,6 +35,18 @@ type Options struct {
 // flash's message clears it.
 type FlashExpiredMsg struct{ ID int }
 
+// Pane is the pane that has the focus. The key hints follow it, so the bar
+// always shows the keys that act where the user is.
+type Pane int
+
+// The panes; the zero value is the grid.
+const (
+	PaneGrid Pane = iota
+	PaneSidebar
+	PaneEditor
+	PaneAI
+)
+
 // Model is the status bar.
 type Model struct {
 	th   theme.Theme
@@ -50,7 +62,8 @@ type Model struct {
 	readOnly bool
 	partial  bool
 	status   session.Status
-	editing  bool // the query editor has the focus
+	pane     Pane // the focused pane, which picks the key hints
+	ai       bool // an assistant is configured, so the ask hint is worth showing
 	pending  int  // inline edits not yet applied
 	tx       bool // a transaction (:tx) is open
 	txStuck  bool // ... and only a rollback may reach it (TX!)
@@ -100,8 +113,12 @@ func (m Model) SetTxStuck(stuck bool) Model { m.txStuck = stuck; return m }
 // stats until it is cleared with "". A flash still shows over it.
 func (m Model) SetActivity(text string) Model { m.activity = text; return m }
 
-// SetEditing switches the key hints to the query editor's.
-func (m Model) SetEditing(on bool) Model { m.editing = on; return m }
+// SetPane switches the key hints to the focused pane's.
+func (m Model) SetPane(p Pane) Model { m.pane = p; return m }
+
+// SetAI says whether an assistant is configured; the grid's ask hint is
+// shown only then.
+func (m Model) SetAI(configured bool) Model { m.ai = configured; return m }
 
 // SetStatus sets the connection status dot.
 func (m Model) SetStatus(s session.Status) Model { m.status = s; return m }
@@ -214,6 +231,8 @@ func thousands(n int64) string {
 	return sb.String()
 }
 
+// hint is one key hint: the key of an action and a short name for what it
+// does here.
 type hint struct {
 	a    keymap.Action
 	name string
@@ -222,19 +241,52 @@ type hint struct {
 	prefer string
 }
 
+// The hints of each pane, most important first: when the bar is narrow the
+// last ones drop out, so the keys a newcomer needs most stay visible.
 var (
-	gridHints   = []hint{{keymap.Help, "help", ""}, {keymap.Palette, "cmd", ""}, {keymap.Filter, "filter", ""}, {keymap.Quit, "quit", ""}}
-	editorHints = []hint{{keymap.RunStatement, "run", "f5"}, {keymap.RunBuffer, "buffer", "shift+f5"}, {keymap.Back, "grid", ""}, {keymap.EditorToggle, "close", ""}}
+	sidebarHints = []hint{
+		{keymap.Help, "help", ""}, {keymap.Open, "open", ""}, {keymap.SidebarFilter, "filter", ""},
+		{keymap.ConnAdd, "add", ""}, {keymap.Palette, "cmd", ""}, {keymap.Quit, "quit", ""},
+	}
+	gridHints = []hint{
+		{keymap.Help, "help", ""}, {keymap.Open, "detail", ""}, {keymap.Filter, "filter", ""},
+		{keymap.Sort, "sort", ""}, {keymap.Edit, "edit", ""}, {keymap.EditorToggle, "query", ""},
+		{keymap.Palette, "cmd", ""}, {keymap.Quit, "quit", ""}, {keymap.CopyCell, "copy", ""},
+		{keymap.Ask, "ask", ""},
+	}
+	editorHints = []hint{
+		{keymap.RunStatement, "run", "f5"}, {keymap.RunBuffer, "buffer", "shift+f5"},
+		{keymap.Complete, "complete", ""}, {keymap.HistSearch, "history", ""},
+		{keymap.Back, "grid", ""}, {keymap.EditorToggle, "close", ""},
+	}
+	aiHints = []hint{
+		{keymap.Open, "send", ""}, {keymap.LoadProposal, "load", ""}, {keymap.CopyProposal, "copy", ""},
+		{keymap.Back, "grid", ""},
+	}
 )
 
-// hints returns the most important key hints, most important first.
-func (m Model) hints() []string {
+// shownHint is a hint resolved against the keymap: the key and the name,
+// rendered apart so the key can stand out.
+type shownHint struct{ key, name string }
+
+func (h shownHint) plain() string { return h.key + " " + h.name }
+
+// hints returns the focused pane's key hints, most important first.
+func (m Model) hints() []shownHint {
 	list := gridHints
-	if m.editing {
+	switch m.pane {
+	case PaneSidebar:
+		list = sidebarHints
+	case PaneEditor:
 		list = editorHints
+	case PaneAI:
+		list = aiHints
 	}
-	var out []string
+	var out []shownHint
 	for _, h := range list {
+		if h.a == keymap.Ask && !m.ai {
+			continue
+		}
 		keys := m.km.Binding(h.a).Keys()
 		if len(keys) == 0 {
 			continue
@@ -245,9 +297,31 @@ func (m Model) hints() []string {
 				k = c
 			}
 		}
-		out = append(out, k+" "+h.name)
+		out = append(out, shownHint{k, h.name})
 	}
 	return out
+}
+
+// joinHints renders the first n hints, keys in the accent colour.
+func (m Model) joinHints(hs []shownHint, n int) string {
+	st := m.th.Styles.StatusBar
+	var sb strings.Builder
+	for i, h := range hs[:n] {
+		if i > 0 {
+			sb.WriteString(st.Render("  "))
+		}
+		sb.WriteString(st.Foreground(m.th.Accent).Render(h.key) + st.Render(" "+h.name))
+	}
+	return sb.String()
+}
+
+// plainHints is the first n hints as plain text, for measuring.
+func plainHints(hs []shownHint, n int) string {
+	parts := make([]string, n)
+	for i, h := range hs[:n] {
+		parts[i] = h.plain()
+	}
+	return strings.Join(parts, "  ")
 }
 
 func (m Model) dotColor() lipgloss.Style {
@@ -350,13 +424,18 @@ func (m Model) View(width int) string {
 	}
 	mid = query.Truncate(mid, midMax)
 
-	// Choose the richest layout that leaves the breadcrumb some room.
+	// Choose the richest layout that leaves the breadcrumb some room. The
+	// first baseHints hints (help and what enter does here) are kept even if
+	// the breadcrumb must be cut to minLeft; the rest only join while the
+	// whole breadcrumb still fits.
+	const baseHints = 2
 	var rightHints string
+	shown := 0
 	showMid := mid != ""
 	chosen := false
 	for _, withMid := range []bool{showMid, false} {
 		for n := len(hints); n >= 0; n-- {
-			h := strings.Join(hints[:n], "  ")
+			h := plainHints(hints, n)
 			right := core
 			if h != "" {
 				right = h + "  " + core
@@ -365,8 +444,12 @@ func (m Model) View(width int) string {
 			if withMid {
 				used += w(mid) + 2
 			}
-			if width-used >= min(w(left), minLeft) {
-				rightHints, showMid, chosen = h, withMid, true
+			need := w(left)
+			if n <= baseHints {
+				need = min(w(left), minLeft)
+			}
+			if width-used >= need {
+				rightHints, shown, showMid, chosen = h, n, withMid, true
 				break
 			}
 		}
@@ -375,7 +458,7 @@ func (m Model) View(width int) string {
 		}
 	}
 	if !chosen {
-		rightHints, showMid = "", false
+		rightHints, shown, showMid = "", 0, false
 	}
 	right := core
 	if rightHints != "" {
@@ -411,8 +494,8 @@ func (m Model) View(width int) string {
 	}
 	pad := max(width-used-w(right), 1)
 	sb.WriteString(st.Render(strings.Repeat(" ", pad)))
-	if rightHints != "" {
-		sb.WriteString(st.Render(rightHints + "  "))
+	if shown > 0 {
+		sb.WriteString(m.joinHints(hints, shown) + st.Render("  "))
 	}
 	if pending != "" {
 		sb.WriteString(st.Foreground(m.th.Warn).Render(pending) + st.Render("  "))
