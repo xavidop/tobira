@@ -4,7 +4,7 @@ go 1.26.9
 
 require (
 	cloud.google.com/go/auth v0.20.0
-	github.com/anthropics/anthropic-sdk-go v1.23.0
+	github.com/anthropics/anthropic-sdk-go v1.82.0
 	github.com/firebase/genkit/go v1.13.1
 	github.com/goccy/go-yaml v1.19.2
 	github.com/google/dotprompt/go v0.0.0-20260708220100-73beb993ac95
@@ -93,6 +93,7 @@ require (
 	github.com/shirou/gopsutil/v4 v4.26.6 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
+	github.com/standard-webhooks/standard-webhooks/libraries v0.0.1 // indirect
 	github.com/stretchr/testify v1.12.1 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
