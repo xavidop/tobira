@@ -16,7 +16,9 @@ func TestRootModuleHasNoGenkit(t *testing.T) {
 	for _, args := range [][]string{{"list", "-m", "all"}, {"list", "-deps", "./..."}} {
 		cmd := exec.Command("go", args...)
 		cmd.Dir = "../.." // the root module
-		cmd.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=-mod=readonly", "GOPROXY=off")
+		// The proxy stays on: go list -m all reads the go.mod of every module
+		// in the graph, which a cold module cache (CI) has not downloaded.
+		cmd.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=-mod=readonly")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("go %v: %v\n%s", args, err, out)

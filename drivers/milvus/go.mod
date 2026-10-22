@@ -1,13 +1,13 @@
 module github.com/xavidop/tobira/drivers/milvus
 
-go 1.26.9
+go 1.26.10
 
 replace github.com/xavidop/tobira => ../..
 
 require (
-	github.com/milvus-io/milvus-proto/go-api/v2 v2.6.17
+	github.com/milvus-io/milvus-proto/go-api/v2 v2.6.25
 	github.com/milvus-io/milvus/client/v2 v2.6.5
-	github.com/moby/moby/api v1.55.0
+	github.com/moby/moby/api v1.56.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/milvus v0.44.0
 	github.com/xavidop/tobira v0.0.0-00010101000000-000000000000

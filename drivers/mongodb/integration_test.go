@@ -27,7 +27,17 @@ const (
 	testDB       = "tobira"
 )
 
-// testHostPort is the address of the mongo:8 single-node replica set shared
+// mongoImage is the MongoDB image the integration tests run: mongo:8, or
+// TOBIRA_TEST_MONGO_IMAGE when set. MongoDB 8 refuses to start on Linux
+// kernels 6.19 through 7.0.13 (SERVER-121912), so CI runs mongo:7.0 there.
+func mongoImage() string {
+	if img := os.Getenv("TOBIRA_TEST_MONGO_IMAGE"); img != "" {
+		return img
+	}
+	return "mongo:8"
+}
+
+// testHostPort is the address of the MongoDB single-node replica set shared
 // by every test in the package; admin is a client on it for seeding and
 // checks, outside the driver.
 var (
@@ -40,7 +50,7 @@ func TestMain(m *testing.M) { os.Exit(runMain(m)) }
 
 func runMain(m *testing.M) int {
 	ctx := context.Background()
-	ctr, err := tcmongo.Run(ctx, "mongo:8",
+	ctr, err := tcmongo.Run(ctx, mongoImage(),
 		tcmongo.WithReplicaSet("rs0"), tcmongo.WithUsername(testUser), tcmongo.WithPassword(testPassword))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "start mongo container:", err)

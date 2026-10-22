@@ -1,6 +1,6 @@
 module example.com/tobira-host-testplugin
 
-go 1.26.9
+go 1.26.10
 
 require (
 	github.com/hashicorp/go-plugin v1.8.0

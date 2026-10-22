@@ -56,7 +56,9 @@ tobira://<connection>/<namespace>/<collection>/schema
 
 The content is the same JSON as the `describe` tool, as `application/json`. A connection that is
 not exposed reads as "not found", the same as one that does not exist. Any read that names nothing
-readable gets MCP's resource-not-found error (`-32002`), with the same text for all of them.
+readable gets MCP's resource-not-found error, with the same text for all of them. That is `-32002`
+for clients on protocol revisions before 2026-07-28, and invalid params (`-32602`) from that
+revision on.
 
 ## Rows: send_rows
 

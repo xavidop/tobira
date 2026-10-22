@@ -224,6 +224,44 @@ func jsonOf(v any) driver.Value {
 	return driver.JSON(raw)
 }
 
+// floatKeysAsText copies v with every map keyed by a float rekeyed by the
+// key's shortest decimal text ("1.5"); other values are kept as they are.
+func floatKeysAsText(v reflect.Value) any {
+	switch v.Kind() {
+	case reflect.Map:
+		if k := v.Type().Key().Kind(); k == reflect.Float32 || k == reflect.Float64 {
+			out := make(map[string]any, v.Len())
+			for it := v.MapRange(); it.Next(); {
+				out[strconv.FormatFloat(it.Key().Float(), 'g', -1, v.Type().Key().Bits())] = floatKeysAsText(it.Value())
+			}
+			return out
+		}
+		out := reflect.MakeMapWithSize(reflect.MapOf(v.Type().Key(), reflect.TypeFor[any]()), v.Len())
+		for it := v.MapRange(); it.Next(); {
+			out.SetMapIndex(it.Key(), reflect.ValueOf(floatKeysAsText(it.Value())))
+		}
+		return out.Interface()
+	case reflect.Slice, reflect.Array:
+		if v.Kind() == reflect.Slice && v.IsNil() {
+			return nil
+		}
+		out := make([]any, v.Len())
+		for i := range out {
+			out[i] = floatKeysAsText(v.Index(i))
+		}
+		return out
+	case reflect.Interface, reflect.Pointer:
+		if v.IsNil() {
+			return nil
+		}
+		return floatKeysAsText(v.Elem())
+	}
+	if !v.IsValid() {
+		return nil
+	}
+	return v.Interface()
+}
+
 // jsonValue renders a composite value as JSON. Text that already is JSON
 // (a JSON column scanned as a string) is kept as is.
 func jsonValue(v any) driver.Value {
@@ -243,6 +281,11 @@ func jsonValue(v any) driver.Value {
 	p := reflect.New(reflect.TypeOf(v))
 	p.Elem().Set(reflect.ValueOf(v))
 	raw, err := json.Marshal(p.Interface())
+	if err != nil {
+		// encoding/json before Go 1.27 refuses float map keys
+		// (Map(Float64, T)); key them by their shortest decimal text.
+		raw, err = json.Marshal(floatKeysAsText(reflect.ValueOf(v)))
+	}
 	if err != nil {
 		return driver.String(fmt.Sprint(v))
 	}

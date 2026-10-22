@@ -199,7 +199,7 @@ document. Values you type are stored as `int` when they fit in 32 bits and `long
 
 ## Compatibility
 
-Tested with MongoDB 8, as a single-node replica set with authentication and as a standalone
+Tested with MongoDB 7.0 and 8, as a single-node replica set with authentication and as a standalone
 server.
 
 ## Troubleshooting

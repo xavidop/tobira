@@ -56,7 +56,7 @@ anything is sent.
 
 ## Compatibility
 
-Tested with MongoDB 8, as a single-node replica set and as a standalone server.
+Tested with MongoDB 7.0 and 8, as a single-node replica set and as a standalone server.
 
 ## Documentation
 

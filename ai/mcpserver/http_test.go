@@ -412,10 +412,12 @@ func TestHTTPListenFailureIsAnError(t *testing.T) {
 }
 
 // Cancel shuts the server down within the 5s grace, even with a client
-// holding a GET stream open, and the port is free afterwards.
+// holding a GET stream open, and the port is free afterwards. The GET stream
+// is the legacy protocol's (removed in 2026-07-28), which older clients still
+// open.
 func TestHTTPShutdownReleasesThePort(t *testing.T) {
 	r := newEnv(t).serveHTTP(t, config.MCP{Expose: []string{"lite"}}, HTTP{Token: driver.NewSecret(cfgToken)})
-	c, err := httpClient(t, r.url, "listener", bearerHeader(cfgToken), transport.WithContinuousListening())
+	c, err := httpClient(t, r.url, "listener", bearerHeader(cfgToken), transport.WithContinuousListening()) //nolint:staticcheck // a legacy client's GET stream, on purpose
 	if err != nil {
 		t.Fatal(err)
 	}
