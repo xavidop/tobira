@@ -2,6 +2,13 @@
 
 All notable changes to tobira are listed here, newest first. Versions follow [Semantic Versioning](https://semver.org/). Each new release is added at the top, with notes generated from the commit messages.
 
+## [1.0.1](https://github.com/xavidop/tobira/compare/v1.0.0...v1.0.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* free disk space and allow publishing an existing tag ([#22](https://github.com/xavidop/tobira/issues/22)) ([6661cf9](https://github.com/xavidop/tobira/commit/6661cf9cce30e7253b90552d7e2db1f997ea3889))
+
 # 1.0.0 (2026-10-22)
 
 
