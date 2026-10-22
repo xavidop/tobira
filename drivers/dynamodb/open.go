@@ -11,8 +11,10 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -22,6 +24,10 @@ import (
 	"github.com/xavidop/tobira/driver"
 	"github.com/xavidop/tobira/driverutil/netpolicy"
 )
+
+// openProbeBackoff caps the backoff between retries of Open's ListTables
+// probe.
+const openProbeBackoff = 500 * time.Millisecond
 
 // settings is what a DSN says. The secret stays a driver.Secret so it
 // never prints.
@@ -216,7 +222,11 @@ func (ddbDriver) Open(ctx context.Context, cfg driver.ConnConfig) (driver.Conn, 
 		cfg.Log().Warn("dynamodb: the endpoint uses plain http; requests are signed but not encrypted", "host", endpointHost(st.endpoint))
 	}
 	c.catalog = newCatalogCache(c)
-	if _, err := c.db.ListTables(ctx, &dynamodb.ListTablesInput{Limit: aws.Int32(1)}); err != nil {
+	// The probe keeps the SDK's retries but caps their backoff, so an
+	// endpoint that refuses connections fails Open in about a second, not
+	// after the default backoff of up to 6s.
+	probeRetry := func(o *dynamodb.Options) { o.Retryer = retry.AddWithMaxBackoffDelay(o.Retryer, openProbeBackoff) }
+	if _, err := c.db.ListTables(ctx, &dynamodb.ListTablesInput{Limit: aws.Int32(1)}, probeRetry); err != nil {
 		c.transport.CloseIdleConnections()
 		return nil, c.fail(ctx, op, err)
 	}
