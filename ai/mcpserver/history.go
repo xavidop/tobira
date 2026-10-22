@@ -49,12 +49,7 @@ func (s *srv) rememberClient(ctx context.Context, _ any, req *mcp.InitializeRequ
 	if cs == nil || req == nil {
 		return
 	}
-	info := req.Params.ClientInfo
-	name := info.Name
-	if info.Version != "" {
-		name += "/" + info.Version
-	}
-	name = cut(name, maxClientRunes)
+	name := clientLabel(req.Params.ClientInfo)
 	s.clients.Store(cs.SessionID(), name)
 	s.log.Debug("mcp client initialized", "client", query.EscapeControls(name))
 }
@@ -72,9 +67,23 @@ func (s *srv) forgetClient(_ context.Context, cs server.ClientSession) {
 	s.clients.Delete(cs.SessionID())
 }
 
-// clientName is the name the calling session gave in initialize; "" when it
-// gave none.
+// clientLabel is "name/version" from a client's declared implementation, cut
+// to maxClientRunes.
+func clientLabel(info mcp.Implementation) string {
+	name := info.Name
+	if info.Version != "" {
+		name += "/" + info.Version
+	}
+	return cut(name, maxClientRunes)
+}
+
+// clientName is the name of the calling client: the one this request
+// declares in its _meta (protocol revisions without initialize), else the
+// one its session gave in initialize; "" when it gave none.
 func (s *srv) clientName(ctx context.Context) string {
+	if info := server.RequestProtocolInfoFromContext(ctx); info != nil && info.ClientInfo != nil {
+		return clientLabel(*info.ClientInfo)
+	}
 	cs := server.ClientSessionFromContext(ctx)
 	if cs == nil {
 		return ""

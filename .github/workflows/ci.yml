@@ -114,9 +114,11 @@ jobs:
         working-directory: drivers/mysql
         run: go test -race -count=1 -tags integration ./...
 
-  # MongoDB: mongo:8 as a single-node replica set (plus a standalone one for
-  # the change-stream refusal) started by testcontainers, including the
-  # conformance kit and the read-only guard probes.
+  # MongoDB: a single-node replica set (plus a standalone one for the
+  # change-stream refusal) started by testcontainers, including the
+  # conformance kit and the read-only guard probes. mongo:7.0, because
+  # MongoDB 8 refuses to start on the runners' Linux 6.19 kernel
+  # (SERVER-121912); local runs use mongo:8.
   integration-mongodb:
     name: integration drivers/mongodb
     runs-on: ubuntu-latest
@@ -128,6 +130,8 @@ jobs:
           cache-dependency-path: drivers/mongodb/go.sum
       - name: go test (race, integration)
         working-directory: drivers/mongodb
+        env:
+          TOBIRA_TEST_MONGO_IMAGE: mongo:7.0
         run: go test -race -count=1 -tags integration ./...
 
   # Redis: redis:8 started by testcontainers (plus a short-lived second

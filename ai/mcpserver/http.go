@@ -98,7 +98,10 @@ func (s *srv) listenHTTP(ctx context.Context, b mcphttp.Bind, h HTTP) error {
 	defer stopSweep()
 	streamable := server.NewStreamableHTTPServer(s.mcp,
 		server.WithSessionIdManager(s.sessions), // only live IDs this server issued
-		server.WithLogger(mcpLogger{s.log}),
+		server.WithStreamableHTTPLogger(slog.New(mcpLogHandler{s.log.Handler()})),
+		// mcphttp.Guard checks Host and Origin against AllowedHosts; mcp-go's
+		// own loopback check would refuse the hosts that list allows.
+		server.WithDisableLocalhostProtection(true),
 	)
 	mux := http.NewServeMux()
 	mux.Handle(endpointPath, s.endSessions(endOnShutdown(streams, streamable)))
@@ -283,12 +286,28 @@ func (f *inFlight) wait(d time.Duration) bool {
 	return true
 }
 
-// mcpLogger sends mcp-go's transport logs to the debug log.
-type mcpLogger struct{ log *slog.Logger }
+// mcpLogHandler sends mcp-go's transport logs to the debug log: every
+// record, whatever its level, is written at debug level and tagged mcp-go.
+type mcpLogHandler struct{ next slog.Handler }
 
-func (l mcpLogger) Infof(format string, v ...any) {
-	l.log.Debug("mcp-go: " + fmt.Sprintf(format, v...))
+func (h mcpLogHandler) Enabled(ctx context.Context, _ slog.Level) bool {
+	return h.next.Enabled(ctx, slog.LevelDebug)
 }
-func (l mcpLogger) Errorf(format string, v ...any) {
-	l.log.Debug("mcp-go error: " + fmt.Sprintf(format, v...))
+
+func (h mcpLogHandler) Handle(ctx context.Context, r slog.Record) error {
+	msg := "mcp-go: " + r.Message
+	if r.Level >= slog.LevelError {
+		msg = "mcp-go error: " + r.Message
+	}
+	out := slog.NewRecord(r.Time, slog.LevelDebug, msg, r.PC)
+	r.Attrs(func(a slog.Attr) bool { out.AddAttrs(a); return true })
+	return h.next.Handle(ctx, out)
+}
+
+func (h mcpLogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return mcpLogHandler{h.next.WithAttrs(attrs)}
+}
+
+func (h mcpLogHandler) WithGroup(name string) slog.Handler {
+	return mcpLogHandler{h.next.WithGroup(name)}
 }

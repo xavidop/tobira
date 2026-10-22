@@ -734,7 +734,7 @@ func TestAITurnCancelledAndWaitedForOnConnectionEdit(t *testing.T) {
 	h.step("E")
 	h.typ("2") // a rename closes the connection
 	h.send(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
-	h.send(<-h.ch) // the SavedMsg: the write starts
+	h.sendSaved() // the SavedMsg: the write starts
 	if h.m.ai.turn != nil {
 		t.Fatal("turn not cancelled before the write")
 	}

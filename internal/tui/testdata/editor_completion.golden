@@ -27,4 +27,4 @@ connections                 │local ▸ main ▸ tobira_people · 57 rows
                             │                        active      field · tobira_people              
                             │                        created_at  field · tobira_people              
                             │                        tags        field · tobira_people              
-local › main › tobira_people  row 1 of 57  T   f5 run  shift+f5 buffer  esc grid  ctrl+e close  ●
+local › main › tobira_people  row 1 of 57  T f5 run  shift+f5 buffer  esc grid  ctrl+e close  ●

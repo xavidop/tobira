@@ -968,7 +968,7 @@ func TestStdioCallsOverlap(t *testing.T) {
 }
 
 // A schema read that names nothing readable is MCP's resource-not-found
-// (-32002), with one text for a hidden and an unknown connection alike; a
+// (see isResourceNotFound), with one text for a hidden and an unknown connection alike; a
 // read that fails inside tobira stays an internal error (-32603).
 func TestSchemaResourceFailuresUseResourceNotFound(t *testing.T) {
 	e := newEnv(t)
@@ -979,8 +979,8 @@ func TestSchemaResourceFailuresUseResourceNotFound(t *testing.T) {
 		"tobira://lite/main/nosuch/schema", "tobira://lite/main/orders/ddl", "tobira://lite//orders/x/schema",
 	} {
 		_, err := readResource(c, uri)
-		if !errors.Is(err, mcp.ErrResourceNotFound) {
-			t.Errorf("%s: err = %v, want resource not found (-32002)", uri, err)
+		if !isResourceNotFound(err) {
+			t.Errorf("%s: err = %v, want resource not found", uri, err)
 			continue
 		}
 		texts[uri] = err.Error()
@@ -989,7 +989,7 @@ func TestSchemaResourceFailuresUseResourceNotFound(t *testing.T) {
 		t.Errorf("hidden %q differs from unknown %q", h, u)
 	}
 	_, err := readResource(c, "tobira://boom/main/tobira_people/schema")
-	if !errors.Is(err, mcp.ErrInternalError) || errors.Is(err, mcp.ErrResourceNotFound) {
+	if !errors.Is(err, mcp.ErrInternalError) || isResourceNotFound(err) {
 		t.Errorf("panicking read: err = %v, want an internal error (-32603)", err)
 	}
 	// A good read still works, and each read is recorded once.
@@ -1027,6 +1027,14 @@ func TestHistoryRecordsUnknownTools(t *testing.T) {
 	}
 }
 
+// isResourceNotFound reports MCP's resource-not-found as the client's
+// protocol revision codes it: -32002 before 2026-07-28, invalid params
+// (-32602) with a "resource not found" message from that revision on.
+func isResourceNotFound(err error) bool {
+	return errors.Is(err, mcp.ErrResourceNotFound) ||
+		errors.Is(err, mcp.ErrInvalidParams) && strings.Contains(err.Error(), "resource not found")
+}
+
 // A URI the template rejects (a raw space or "$") is not found, even when
 // a collection of that name exists: the read is recorded once, as failed,
 // and never as a success.
@@ -1035,7 +1043,7 @@ func TestSchemaURIRejectedByTheTemplateIsNotFound(t *testing.T) {
 	c := e.serve(t, config.MCP{Expose: []string{"lite"}}, "unit")
 	uris := []string{"tobira://lite/main/sp ace/schema", "tobira://lite/main/do$lar/schema"}
 	for _, uri := range uris {
-		if _, err := readResource(c, uri); !errors.Is(err, mcp.ErrResourceNotFound) {
+		if _, err := readResource(c, uri); !isResourceNotFound(err) {
 			t.Errorf("%s: err = %v, want resource not found", uri, err)
 		}
 	}

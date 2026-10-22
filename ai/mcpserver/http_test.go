@@ -297,8 +297,17 @@ func countClients(s *srv) int {
 
 var tokenLine = regexp.MustCompile(`MCP HTTP token: ([0-9a-f]+) \(pass as Authorization: Bearer …\)\n`)
 
+// waitTokenLine waits up to 5s for the generated token line, which the
+// server prints after the listening line serveHTTP waits for.
+func waitTokenLine(r *httpRun) {
+	for deadline := time.Now().Add(5 * time.Second); !tokenLine.MatchString(r.stderr.String()) && time.Now().Before(deadline); {
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 func TestHTTPGeneratedTokenIsPrintedOnce(t *testing.T) {
 	r := newEnv(t).serveHTTP(t, config.MCP{Expose: []string{"lite"}}, HTTP{})
+	waitTokenLine(r)
 	ms := tokenLine.FindAllStringSubmatch(r.stderr.String(), -1)
 	if len(ms) != 1 {
 		t.Fatalf("stderr has %d token lines, want 1: %q", len(ms), r.stderr.String())
@@ -318,6 +327,7 @@ func TestHTTPGeneratedTokenIsPrintedOnce(t *testing.T) {
 	}
 	// Each run gets its own token.
 	r2 := newEnv(t).serveHTTP(t, config.MCP{Expose: []string{"lite"}}, HTTP{})
+	waitTokenLine(r2)
 	if m := tokenLine.FindStringSubmatch(r2.stderr.String()); m == nil || m[1] == tok {
 		t.Errorf("second run's token = %v, want a fresh one", m)
 	}
@@ -412,10 +422,12 @@ func TestHTTPListenFailureIsAnError(t *testing.T) {
 }
 
 // Cancel shuts the server down within the 5s grace, even with a client
-// holding a GET stream open, and the port is free afterwards.
+// holding a GET stream open, and the port is free afterwards. The GET stream
+// is the legacy protocol's (removed in 2026-07-28), which older clients still
+// open.
 func TestHTTPShutdownReleasesThePort(t *testing.T) {
 	r := newEnv(t).serveHTTP(t, config.MCP{Expose: []string{"lite"}}, HTTP{Token: driver.NewSecret(cfgToken)})
-	c, err := httpClient(t, r.url, "listener", bearerHeader(cfgToken), transport.WithContinuousListening())
+	c, err := httpClient(t, r.url, "listener", bearerHeader(cfgToken), transport.WithContinuousListening()) //nolint:staticcheck // a legacy client's GET stream, on purpose
 	if err != nil {
 		t.Fatal(err)
 	}

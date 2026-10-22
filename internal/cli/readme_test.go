@@ -55,7 +55,7 @@ func outsideFences(text string) []string {
 }
 
 // TestReadmeShape keeps the README in its fixed shape: the logo,
-// "# 扉 tobira", the tagline, an italic one-liner, the four badges in order,
+// "# 扉 tobira", the tagline, an italic one-liner, the three badges in order,
 // then exactly the sections of readmeSections in that order, with the demo
 // GIF in Quick start.
 func TestReadmeShape(t *testing.T) {
@@ -73,7 +73,6 @@ func TestReadmeShape(t *testing.T) {
 		{"italic one-liner", regexp.MustCompile(`^\*[^*].*$`)},
 		{"Go Reference badge", regexp.MustCompile(`^\[!\[Go Reference\]`)},
 		{"CI badge", regexp.MustCompile(`^\[!\[CI\]`)},
-		{"Go Report Card badge", regexp.MustCompile(`^\[!\[Go Report Card\]`)},
 		{"MIT badge", regexp.MustCompile(`^\[!\[License: MIT\]`)},
 	}
 	next := 0
@@ -88,7 +87,7 @@ func TestReadmeShape(t *testing.T) {
 		}
 	}
 	if next < len(header) {
-		t.Errorf("README.md header: missing or out of order from %q (want logo, title, tagline, italic one-liner, then the Go Reference, CI, Go Report Card and MIT badges)", header[next].what)
+		t.Errorf("README.md header: missing or out of order from %q (want logo, title, tagline, italic one-liner, then the Go Reference, CI and MIT badges)", header[next].what)
 	}
 	if firstSection < 0 {
 		t.Fatal("README.md has no \"## \" section")

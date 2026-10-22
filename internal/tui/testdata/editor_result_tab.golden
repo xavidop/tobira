@@ -27,4 +27,4 @@ connections                 │local ▸ select * fro… · 1 row
                             │                                                                       
                             │                                                                       
                             │                                                                       
-local › 1:select * fro…  row 1 of 1  T         f5 run  shift+f5 buffer  esc grid  ctrl+e close  ●
+local › 1:select * fro…  row 1 of 1  T f5 run  shift+f5 buffer  esc grid  ctrl+e close  ●

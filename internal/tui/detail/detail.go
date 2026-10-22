@@ -410,7 +410,8 @@ func (m Model) View(width, height int) string {
 // render draws one line, exactly width columns wide.
 func (m Model) render(l line, cursor bool, labelW, width int) string {
 	st := m.th.Styles
-	label, value, valSt := "", "", lipgloss.Style{}
+	label, value := "", ""
+	var valSt lipgloss.Style
 	switch {
 	case l.n == nil:
 		value = strings.Repeat("  ", l.of.depth+1) + "  … " + strconv.Itoa(l.more) + " more"

@@ -34,8 +34,9 @@ func (s *srv) addSchemaResource() {
 
 // notFoundURI is what a schema read that names nothing readable is
 // rewritten to before mcp-go routes it. It matches no resource, so mcp-go
-// answers MCP's resource-not-found (-32002), with one text for every such
-// read: a hidden connection reads exactly like an unknown one. mcp-go has
+// answers MCP's resource-not-found (-32002, or invalid params from protocol
+// 2026-07-28 on), with one text for every such read: a hidden connection
+// reads exactly like an unknown one. mcp-go has
 // no other way to choose the error code of a read (a handler's error is
 // always -32603).
 const notFoundURI = "tobira:not-found"

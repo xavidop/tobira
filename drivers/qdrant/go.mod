@@ -1,6 +1,6 @@
 module github.com/xavidop/tobira/drivers/qdrant
 
-go 1.26.9
+go 1.26.10
 
 require (
 	github.com/qdrant/go-client v1.19.4

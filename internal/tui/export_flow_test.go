@@ -167,7 +167,9 @@ func TestExportOverwriteConfirm(t *testing.T) {
 		t.Fatal("the target was checked on the Update goroutine")
 	}
 	h.pump(func() bool { return h.m.ask != nil })
-	if !strings.Contains(h.text(), `overwrite `) || !strings.Contains(h.text(), `x\x1b[2J.csv? y/N`) {
+	// The prompt wraps where the temp path ends, so "y/N" may be on the
+	// next line.
+	if !strings.Contains(h.text(), `overwrite `) || !strings.Contains(h.text(), `x\x1b[2J.csv?`) || !strings.Contains(h.text(), `y/N`) {
 		t.Fatalf("no overwrite prompt:\n%s", h.text())
 	}
 	checkFrame(t, h, winW, winH)

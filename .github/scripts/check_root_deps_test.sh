@@ -22,7 +22,7 @@ mkdir -p "$tmp/direct"
 cat >"$tmp/direct/go.mod" <<'MOD'
 module example.com/direct
 
-go 1.26.9
+go 1.26.10
 MOD
 cat >"$tmp/direct/main.go" <<'GO'
 package main
@@ -38,7 +38,7 @@ mkdir -p "$tmp/trans/a" "$tmp/trans/b"
 cat >"$tmp/trans/b/go.mod" <<'MOD'
 module example.com/b
 
-go 1.26.9
+go 1.26.10
 MOD
 cat >"$tmp/trans/b/b.go" <<'GO'
 package b
@@ -49,7 +49,7 @@ GO
 cat >"$tmp/trans/a/go.mod" <<'MOD'
 module example.com/a
 
-go 1.26.9
+go 1.26.10
 
 require example.com/b v0.0.0
 

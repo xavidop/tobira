@@ -307,11 +307,11 @@ func TestIntegrationWatch(t *testing.T) {
 	}
 }
 
-// TestIntegrationWatchStandalone runs a standalone mongo:8 (no replica
+// TestIntegrationWatchStandalone runs a standalone MongoDB (no replica
 // set), where change streams are ErrUnsupported with a hint.
 func TestIntegrationWatchStandalone(t *testing.T) {
 	ctx := context.Background()
-	ctr, err := tcmongo.Run(ctx, "mongo:8")
+	ctr, err := tcmongo.Run(ctx, mongoImage())
 	if err != nil {
 		t.Fatal(err)
 	}

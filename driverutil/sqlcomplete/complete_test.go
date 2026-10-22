@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 	"sync"
@@ -453,15 +454,25 @@ func FuzzComplete(f *testing.F) {
 	})
 }
 
+// Completion is linear in the statement's length. The check compares a
+// statement against one four times longer instead of using a wall-clock
+// limit, so a slow or race-instrumented runner does not fail it: linear work
+// grows about 4x, quadratic work 16x.
 func TestCompleteLongStatementIsFast(t *testing.T) {
-	var b strings.Builder
-	b.WriteString("select ")
-	for range 20000 {
-		b.WriteString("extract(year from d), ")
+	member := func(n int) string {
+		return "select " + strings.Repeat("extract(year from d), ", n) + "x from people p where p."
 	}
-	b.WriteString("x from people p where p.")
-	text := b.String()
-	start := time.Now()
+	// Ending on a comma after many FROM-bearing calls must be linear as well.
+	comma := func(n int) string { return "select " + strings.Repeat("extract(year from d), ", n) }
+	for name, text := range map[string]func(int) string{"member": member, "comma": comma} {
+		t.Run(name, func(t *testing.T) {
+			small, large := completeTime(t, text(5000)), completeTime(t, text(20000))
+			if large > 10*small+50*time.Millisecond {
+				t.Fatalf("completion took %v at 5k items and %v at 20k: not linear", small, large)
+			}
+		})
+	}
+	text := member(20000)
 	got, err := Complete(context.Background(), newFake(), Postgres(), driver.CompletionRequest{Text: text, Cursor: len(text)})
 	if err != nil {
 		t.Fatal(err)
@@ -469,18 +480,20 @@ func TestCompleteLongStatementIsFast(t *testing.T) {
 	if !slices.Equal(labels(got), []string{"email", "id", "name"}) {
 		t.Fatalf("labels = %v", labels(got))
 	}
-	if d := time.Since(start); d > 2*time.Second {
-		t.Fatalf("completion took %v on a long statement", d)
+}
+
+// completeTime is the fastest of three completions at the end of text.
+func completeTime(t *testing.T, text string) time.Duration {
+	t.Helper()
+	best := time.Duration(math.MaxInt64)
+	for range 3 {
+		start := time.Now()
+		if _, err := Complete(context.Background(), newFake(), Postgres(), driver.CompletionRequest{Text: text, Cursor: len(text)}); err != nil {
+			t.Fatal(err)
+		}
+		best = min(best, time.Since(start))
 	}
-	// Ending on a comma after many FROM-bearing calls must be linear as well.
-	text = "select " + strings.Repeat("extract(year from d), ", 20000)
-	start = time.Now()
-	if _, err := Complete(context.Background(), newFake(), Postgres(), driver.CompletionRequest{Text: text, Cursor: len(text)}); err != nil {
-		t.Fatal(err)
-	}
-	if d := time.Since(start); d > 2*time.Second {
-		t.Fatalf("comma completion took %v", d)
-	}
+	return best
 }
 
 func TestCompleteMySQL(t *testing.T) {

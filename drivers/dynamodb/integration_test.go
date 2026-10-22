@@ -5,6 +5,7 @@ package dynamodb
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 	"testing"
@@ -33,11 +34,13 @@ const (
 
 // endpoint is the DynamoDB Local container shared by every test in the
 // package (run with -sharedDb, so every access key sees the same tables);
-// admin is a plain SDK client on it for seeding and checks.
+// admin is a plain SDK client on it for seeding and checks, on its own
+// transport so its keep-alive connections can be closed before the leak check.
 var (
-	endpoint     string
-	admin        *dynamodb.Client
-	leakBaseline goleak.Option
+	endpoint       string
+	admin          *dynamodb.Client
+	adminTransport = http.DefaultTransport.(*http.Transport).Clone()
+	leakBaseline   goleak.Option
 )
 
 func TestMain(m *testing.M) { os.Exit(runMain(m)) }
@@ -68,6 +71,7 @@ func runMain(m *testing.M) int {
 		Region:       testRegion,
 		BaseEndpoint: aws.String(endpoint),
 		Credentials:  credentials.NewStaticCredentialsProvider("admin", "admin-secret", ""),
+		HTTPClient:   &http.Client{Transport: adminTransport},
 	})
 	if err := waitReady(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, "dynamodb-local not ready:", err)
@@ -79,6 +83,7 @@ func runMain(m *testing.M) int {
 	}
 	leakBaseline = goleak.IgnoreCurrent()
 	code := m.Run()
+	adminTransport.CloseIdleConnections()
 	if code == 0 {
 		if err := goleak.Find(leakBaseline); err != nil {
 			fmt.Fprintln(os.Stderr, "goroutine leak:", err)

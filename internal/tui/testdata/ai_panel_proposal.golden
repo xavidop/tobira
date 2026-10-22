@@ -5,7 +5,7 @@ connections                 │no collection open                        │AI �
                             │                                          ││ select * from tobira_people                  │
                             │                                          │╰──────────────────────────────────────────────╯
                             │                                          │ctrl+o load · f5 run · ctrl+y copy              
-                            │                                          │fake/model · 1.2k in / 340 out · T           
+                            │                                          │fake/model · 1.2k in / 340 out · T 
                             │                                          │                                                
                             │                                          │                                                
                             │                                          │                                                

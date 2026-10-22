@@ -4,7 +4,9 @@
 version: "2"
 
 run:
-  timeout: 5m
+  # cmd/tobira pulls in every driver; loading it on a cold CI cache takes
+  # longer than 5m.
+  timeout: 15m
 
 linters:
   # The standard set: errcheck, govet, ineffassign, staticcheck, unused.

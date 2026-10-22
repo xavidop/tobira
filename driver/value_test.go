@@ -86,6 +86,38 @@ func TestConstructAccess(t *testing.T) {
 	}
 }
 
+func TestLenElementsMembers(t *testing.T) {
+	list := List(Int(1), String("a"), Null())
+	obj := ObjectValue(Member{"k", Int(1)}, Member{"j", Bool(true)})
+	if list.Len() != 3 || obj.Len() != 2 || String("abc").Len() != 0 || Null().Len() != 0 {
+		t.Errorf("Len = %d, %d, %d, %d", list.Len(), obj.Len(), String("abc").Len(), Null().Len())
+	}
+	var got []string
+	for i, e := range list.Elements() {
+		got = append(got, Int(int64(i)).String()+"="+e.String())
+	}
+	for i, m := range obj.Members() {
+		got = append(got, Int(int64(i)).String()+"="+m.Key+":"+m.Value.String())
+	}
+	if want := []string{"0=1", "1=a", "2=NULL", "0=k:1", "1=j:true"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("iterated %q, want %q", got, want)
+	}
+	for range obj.Elements() {
+		t.Error("an Object yields elements")
+	}
+	for range list.Members() {
+		t.Error("a List yields members")
+	}
+	n := 0
+	for range list.Elements() {
+		n++
+		break
+	}
+	if n != 1 {
+		t.Errorf("break after %d elements", n)
+	}
+}
+
 func TestValueImmutable(t *testing.T) {
 	b := []byte{1, 2, 3}
 	bv := Bytes(b)
