@@ -216,6 +216,24 @@ func WithConnections(ctx context.Context, names ...string) context.Context {
 	return context.WithValue(ctx, connsKey{}, allow)
 }
 
+// scopedConn fills an empty connection name with the one connection the
+// turn is bound to (WithConnections with a single name): the conversation
+// is about that connection, so a tool that names none means it. Any other
+// turn keeps the empty name, which open refuses.
+func (t *Toolset) scopedConn(ctx context.Context, name string) string {
+	if strings.TrimSpace(name) != "" {
+		return name
+	}
+	allow, scoped := ctx.Value(connsKey{}).(map[string]bool)
+	if !scoped || len(allow) != 1 {
+		return name
+	}
+	for only := range allow {
+		return only
+	}
+	return name
+}
+
 // allowed reports whether the tools may name conn in ctx's turn.
 func (t *Toolset) allowed(ctx context.Context, conn string) bool {
 	if t.deps.Connections != nil && !slices.Contains(t.deps.Connections, conn) {

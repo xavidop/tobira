@@ -89,6 +89,7 @@ func (o *ExplainOutput) rowCount() int {
 
 // Sample reads the first rows of a collection through Browse, read-only.
 func (t *Toolset) Sample(ctx context.Context, in SampleInput) (RowsOutput, error) {
+	in.Connection = t.scopedConn(ctx, in.Connection)
 	return run(t, ctx, NameSample, in.Connection, in, func(call, turn context.Context) (RowsOutput, error) {
 		c, err := t.openReadable(call, in.Connection)
 		if err != nil {
@@ -109,6 +110,7 @@ func (t *Toolset) Sample(ctx context.Context, in SampleInput) (RowsOutput, error
 
 // Query runs a read-only query.
 func (t *Toolset) Query(ctx context.Context, in QueryInput) (RowsOutput, error) {
+	in.Connection = t.scopedConn(ctx, in.Connection)
 	return run(t, ctx, NameQuery, in.Connection, in, func(call, turn context.Context) (RowsOutput, error) {
 		if strings.TrimSpace(in.Query) == "" {
 			return RowsOutput{}, errors.New("query is empty")
@@ -126,6 +128,7 @@ func (t *Toolset) Query(ctx context.Context, in QueryInput) (RowsOutput, error) 
 
 // Explain returns the plan of a read-only query, without ANALYZE.
 func (t *Toolset) Explain(ctx context.Context, in ExplainInput) (ExplainOutput, error) {
+	in.Connection = t.scopedConn(ctx, in.Connection)
 	return run(t, ctx, NameExplain, in.Connection, in, func(call, turn context.Context) (ExplainOutput, error) {
 		if strings.TrimSpace(in.Query) == "" {
 			return ExplainOutput{}, errors.New("query is empty")
@@ -173,6 +176,7 @@ func (t *Toolset) Explain(ctx context.Context, in ExplainInput) (ExplainOutput, 
 // context came from WithExecute, the connection is not read-only, and the
 // user confirms this very statement through Events.ConfirmExecute.
 func (t *Toolset) Exec(ctx context.Context, in ExecuteInput) (RowsOutput, error) {
+	in.Connection = t.scopedConn(ctx, in.Connection)
 	return run(t, ctx, NameExecute, in.Connection, in, func(call, turn context.Context) (RowsOutput, error) {
 		if !executeAllowed(turn) {
 			return RowsOutput{}, errors.New("execute is not enabled for this request")

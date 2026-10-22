@@ -30,8 +30,8 @@ func goldenInputs() map[string]map[string]any {
 	}
 	history := []map[string]any{{"from": "user", "text": "show orders"}, {"from": "assistant", "text": "Use the orders table."}}
 	return map[string]map[string]any{
-		promptAsk:            base(map[string]any{"question": "total revenue per day?", "history": history, "tools": true}),
-		promptAnswer:         base(map[string]any{"question": "what is the biggest order?", "history": history, "execute": false}),
+		promptAsk:            base(map[string]any{"connection": "dev", "question": "total revenue per day?", "history": history, "tools": true}),
+		promptAnswer:         base(map[string]any{"connection": "dev", "question": "what is the biggest order?", "history": history, "execute": false}),
 		promptExplainResults: base(map[string]any{"query": "select id, total from orders", "columns": `[{"name":"id","type":"INTEGER"},{"name":"total","type":"REAL"}]`, "rows": "[[1,9.5],[2,20]]", "truncated": true}),
 		promptFixError:       base(map[string]any{"query": "select totl from orders", "error": "no such column: totl", "tools": false}),
 	}
