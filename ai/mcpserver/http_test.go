@@ -297,12 +297,17 @@ func countClients(s *srv) int {
 
 var tokenLine = regexp.MustCompile(`MCP HTTP token: ([0-9a-f]+) \(pass as Authorization: Bearer …\)\n`)
 
-func TestHTTPGeneratedTokenIsPrintedOnce(t *testing.T) {
-	r := newEnv(t).serveHTTP(t, config.MCP{Expose: []string{"lite"}}, HTTP{})
-	// The token line follows the listening line the server is ready on.
+// waitTokenLine waits up to 5s for the generated token line, which the
+// server prints after the listening line serveHTTP waits for.
+func waitTokenLine(r *httpRun) {
 	for deadline := time.Now().Add(5 * time.Second); !tokenLine.MatchString(r.stderr.String()) && time.Now().Before(deadline); {
 		time.Sleep(10 * time.Millisecond)
 	}
+}
+
+func TestHTTPGeneratedTokenIsPrintedOnce(t *testing.T) {
+	r := newEnv(t).serveHTTP(t, config.MCP{Expose: []string{"lite"}}, HTTP{})
+	waitTokenLine(r)
 	ms := tokenLine.FindAllStringSubmatch(r.stderr.String(), -1)
 	if len(ms) != 1 {
 		t.Fatalf("stderr has %d token lines, want 1: %q", len(ms), r.stderr.String())
@@ -322,6 +327,7 @@ func TestHTTPGeneratedTokenIsPrintedOnce(t *testing.T) {
 	}
 	// Each run gets its own token.
 	r2 := newEnv(t).serveHTTP(t, config.MCP{Expose: []string{"lite"}}, HTTP{})
+	waitTokenLine(r2)
 	if m := tokenLine.FindStringSubmatch(r2.stderr.String()); m == nil || m[1] == tok {
 		t.Errorf("second run's token = %v, want a fresh one", m)
 	}
