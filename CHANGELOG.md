@@ -2,6 +2,18 @@
 
 All notable changes to tobira are listed here, newest first. Versions follow [Semantic Versioning](https://semver.org/). Each new release is added at the top, with notes generated from the commit messages.
 
+# 1.0.0 (2026-10-22)
+
+
+### Bug Fixes
+
+* apply the Dependabot updates and fix CI ([#21](https://github.com/xavidop/tobira/issues/21)) ([a30e128](https://github.com/xavidop/tobira/commit/a30e128c43f752d9c346e24218399a31a9a91f2b))
+
+
+### Features
+
+* initial commit ([821be70](https://github.com/xavidop/tobira/commit/821be70add59329a186a5a182d17e0e6f07c6377))
+
 ## 1.0.0 highlights
 
 What tobira 1.0.0, the first public release, includes: one CLI and terminal UI for SQL, document,
