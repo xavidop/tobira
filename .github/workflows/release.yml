@@ -109,9 +109,10 @@ jobs:
 
       # 2. Build and publish the GitHub Release for the tag semantic-release created.
       #
-      # GoReleaser is pinned: .goreleaser.yaml uses the cask hooks.post.install
-      # key, which v2.19 deprecates in favour of install_steps (not parsed by
-      # 2.18). Move both together when bumping.
+      # GoReleaser is pinned: .goreleaser.yaml writes the cask's
+      # postflight_steps through custom_block because 2.18 has no
+      # install_steps option. When bumping to 2.19+, move that block to
+      # hooks.post.install_steps (with {{ .StagedPath }}) in the same change.
       - name: Run GoReleaser
         if: env.RETAG != '' || steps.semantic.outputs.new_release_published == 'true'
         uses: goreleaser/goreleaser-action@v7
