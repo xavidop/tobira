@@ -1,14 +1,14 @@
 connections                 │no collection open                        │AI · fake/model · local · ask                   
 ▸ ● local                   │select a collection in the sidebar and pre│› who is here?                                  
 ▸ ● ro                      │                                          │Lists every person.                             
-                            │                                          │╭──────────────────────────────────────────────╮
-                            │                                          ││ select * from tobira_people                  │
-                            │                                          │╰──────────────────────────────────────────────╯
-                            │                                          │ctrl+o load · f5 run · ctrl+y copy              
-                            │                                          │fake/model · 1.2k in / 340 out · T 
-                            │                                          │                                                
-                            │                                          │                                                
-                            │                                          │                                                
+                            │enter   open the selected connection or co│╭──────────────────────────────────────────────╮
+                            │n       add a connection                  ││ select * from tobira_people                  │
+                            │E       edit the selected connection      │╰──────────────────────────────────────────────╯
+                            │/       filter the sidebar                │ctrl+o load · f5 run · ctrl+y copy              
+                            │ctrl+e  open the query editor             │fake/model · 1.2k in / 340 out · T 
+                            │a       ask the AI about the selected conn│                                                
+                            │:       command palette: export, theme, ke│                                                
+                            │f1/?    every key and command             │                                                
                             │                                          │                                                
                             │                                          │                                                
                             │                                          │                                                

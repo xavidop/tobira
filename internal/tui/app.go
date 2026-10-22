@@ -1452,7 +1452,7 @@ func (a *Model) gridPane(r rect) (title, content string) {
 		return a.tabTitle(t), a.tabView(t, r.w, r.h)
 	}
 	if !a.cur.set {
-		return "no collection open", a.th.Styles.Dim.Render("select a collection in the sidebar and press enter")
+		return "no collection open", a.welcome()
 	}
 	title = crumb
 	if label := a.rowsLabel(); label != "" {
