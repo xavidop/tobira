@@ -9,6 +9,10 @@ name: Release
 #      with the artifacts, checksums, and SBOM for that tag.
 #   3. SLSA provenance is generated for the released artifacts.
 #
+# Run it by hand with a tag (workflow_dispatch, input `tag`) to publish a tag
+# that already exists but has no GitHub Release, for instance after
+# GoReleaser failed: the tag is checked out and only steps 2 and 3 run.
+#
 # The root module is consumed via `go get` at the tag; the CLI module
 # (cmd/tobira) is built by GoReleaser.
 
@@ -16,6 +20,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "An existing tag (vX.Y.Z) to publish with GoReleaser, skipping semantic-release"
+        required: false
+        default: ""
 
 permissions:
   contents: write # create tags, releases, and commit the changelog
@@ -27,16 +36,32 @@ jobs:
   release:
     name: Version & build
     runs-on: ubuntu-latest
+    env:
+      RETAG: ${{ inputs.tag }}
     outputs:
-      published: ${{ steps.semantic.outputs.new_release_published }}
-      version: ${{ steps.semantic.outputs.new_release_version }}
-      tag: ${{ steps.semantic.outputs.new_release_git_tag }}
+      published: ${{ inputs.tag != '' && 'true' || steps.semantic.outputs.new_release_published }}
+      tag: ${{ inputs.tag != '' && inputs.tag || steps.semantic.outputs.new_release_git_tag }}
       hashes: ${{ steps.hashes.outputs.hashes }}
     steps:
+      # Six cross-compiled targets, each linking every driver's SDK, fill the
+      # runner's disk with build cache; the preinstalled toolchains this job
+      # never uses free about 30 GB.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
+
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history so semantic-release can analyze commits
           persist-credentials: true
+          ref: ${{ inputs.tag != '' && inputs.tag || github.ref }}
+
+      - name: Check the tag to publish
+        if: env.RETAG != ''
+        run: |
+          [[ "$RETAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::tag must look like vX.Y.Z"; exit 1; }
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "$RETAG^{commit}")"
 
       - uses: actions/setup-go@v7
         with:
@@ -72,6 +97,7 @@ jobs:
       # 1. Determine the next version, update CHANGELOG.md, create and push the tag.
       - name: Semantic Release
         id: semantic
+        if: env.RETAG == ''
         uses: cycjimmy/semantic-release-action@v8
         with:
           semantic_version: 24
@@ -87,7 +113,7 @@ jobs:
       # key, which v2.19 deprecates in favour of install_steps (not parsed by
       # 2.18). Move both together when bumping.
       - name: Run GoReleaser
-        if: steps.semantic.outputs.new_release_published == 'true'
+        if: env.RETAG != '' || steps.semantic.outputs.new_release_published == 'true'
         uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
@@ -111,7 +137,7 @@ jobs:
       # 3. Export the artifact hashes for the provenance job.
       - name: Export artifact hashes
         id: hashes
-        if: steps.semantic.outputs.new_release_published == 'true'
+        if: env.RETAG != '' || steps.semantic.outputs.new_release_published == 'true'
         run: echo "hashes=$(base64 -w0 < dist/checksums.txt)" >> "$GITHUB_OUTPUT"
 
   provenance:
