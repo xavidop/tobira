@@ -1182,7 +1182,7 @@ func (a *Model) syncBar() {
 	if !a.cur.set {
 		conn, _ = a.sb.Selected()
 	}
-	a.st = a.st.SetEditing(a.focus == focusEditor && a.edOpen).SetPending(a.pend.count()).
+	a.st = a.st.SetPane(a.barPane()).SetAI(a.asst != nil).SetPending(a.pend.count()).
 		SetTx(a.tx != nil && a.tx.tx != nil).SetTxStuck(a.tx != nil && a.tx.stuck).SetActivity(a.exportStatus())
 	if t := a.activeTab(); t != nil {
 		s := a.mgr.State(t.conn)
@@ -1217,6 +1217,20 @@ func (a *Model) syncBar() {
 	}
 	a.st = a.st.SetContext(a.cur.conn, a.cur.ref.Namespace, a.cur.ref.Name).
 		SetStats(pos, gs.Loaded, int64(gs.Total), gs.Took).SetPartial(!gs.Exact)
+}
+
+// barPane is the pane whose key hints the status bar shows: the focused one,
+// falling back to the grid when the focused editor or AI panel is closed.
+func (a *Model) barPane() statusbar.Pane {
+	switch {
+	case a.focus == focusSidebar:
+		return statusbar.PaneSidebar
+	case a.focus == focusEditor && a.edOpen:
+		return statusbar.PaneEditor
+	case a.focus == focusAI && a.ai.open:
+		return statusbar.PaneAI
+	}
+	return statusbar.PaneGrid
 }
 
 // ---- layout and drawing -----------------------------------------------------------

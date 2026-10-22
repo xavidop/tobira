@@ -52,7 +52,9 @@ config file.
   as the terminal draws them, so emoji and combining marks are never split.
 - **Status bar**: breadcrumb, row position and load time, `N pending` edits, `TX` while a
   [transaction](/docs/editing/#transactions) is open, the [read-only badge](#read-only),
-  connection status, export progress and errors. An error stays until the next key press.
+  connection status, export progress and errors. An error stays until the next key press. On
+  the right, the key hints for the focused pane, most useful first: a narrow terminal drops the
+  last ones. `F1` or `?` lists every key.
 - **Filter bar and command palette** open below the panes when you use them.
 - **Result tabs and query editor** share the grid's column when the editor is open: a tab bar on
   top, the grid of the active tab, then the editor at the bottom. On a short terminal the focused

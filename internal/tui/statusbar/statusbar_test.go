@@ -206,9 +206,9 @@ func TestTruncLeftAgreesWithLayoutWidth(t *testing.T) {
 }
 
 func TestEditingHintsShowF5(t *testing.T) {
-	m := newBar(false).SetEditing(true)
+	m := newBar(false).SetPane(PaneEditor)
 	got := plainView(m, 140)
-	for _, want := range []string{"f5 run", "esc grid"} {
+	for _, want := range []string{"f5 run", "shift+f5 buffer", "ctrl+space complete", "ctrl+r history", "esc grid", "ctrl+e close"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("editing hints missing %q: %q", want, got)
 		}
@@ -216,8 +216,78 @@ func TestEditingHintsShowF5(t *testing.T) {
 	if strings.Contains(got, "f filter") {
 		t.Fatalf("grid hint shown while editing: %q", got)
 	}
-	if got := plainView(m.SetEditing(false), 140); !strings.Contains(got, "f filter") {
+	if got := plainView(m.SetPane(PaneGrid), 140); !strings.Contains(got, "f filter") {
 		t.Fatalf("grid hints not restored: %q", got)
+	}
+}
+
+// The hints follow the focused pane, so a newcomer sees the keys that act
+// where they are without opening the help.
+func TestHintsFollowThePane(t *testing.T) {
+	tests := []struct {
+		name string
+		pane Pane
+		want []string
+		not  []string
+	}{
+		{"sidebar", PaneSidebar, []string{"f1 help", "enter open", "/ filter", "n add", ": cmd", "q quit"}, []string{"f filter", "s sort"}},
+		{"grid", PaneGrid, []string{"f1 help", "enter detail", "f filter", "s sort", "e edit", "y copy", "ctrl+e query", ": cmd", "q quit"}, []string{"n add", "a ask"}},
+		{"ai", PaneAI, []string{"enter send", "ctrl+o load", "ctrl+y copy", "esc grid"}, []string{"f filter", "q quit"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := plainView(newBar(false).SetPane(tt.pane), 160)
+			for _, w := range tt.want {
+				if !strings.Contains(got, w) {
+					t.Errorf("missing %q in %q", w, got)
+				}
+			}
+			for _, w := range tt.not {
+				if strings.Contains(got, w) {
+					t.Errorf("unexpected %q in %q", w, got)
+				}
+			}
+		})
+	}
+}
+
+// The ask hint only advertises the assistant when one is configured.
+func TestAskHintNeedsAnAssistant(t *testing.T) {
+	m := newBar(false).SetPane(PaneGrid)
+	if got := plainView(m, 160); strings.Contains(got, "a ask") {
+		t.Fatalf("ask hint shown without an assistant: %q", got)
+	}
+	if got := plainView(m.SetAI(true), 160); !strings.Contains(got, "a ask") {
+		t.Fatalf("ask hint missing with an assistant: %q", got)
+	}
+}
+
+// A narrow bar drops the hints from the end, so the ones a newcomer needs
+// most stay: help, then what enter does here. Only those two may cut the
+// breadcrumb; the rest never do.
+func TestNarrowBarKeepsTheFirstHints(t *testing.T) {
+	m := newBar(false).SetPane(PaneGrid).SetContext("local", "main", "tobira_people").
+		SetStats(12, 1204, 0, 23*time.Millisecond)
+	got := plainView(m, 80)
+	for _, want := range []string{"local › main › tobira_people", "f1 help", "enter detail", "row 12 of 1,204"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in %q", want, got)
+		}
+	}
+	if strings.Contains(got, "q quit") {
+		t.Errorf("the last hint survived a narrow bar: %q", got)
+	}
+	if ansi.StringWidth(got) > 80 {
+		t.Errorf("bar is %d wide: %q", ansi.StringWidth(got), got)
+	}
+	got = plainView(m, 50)
+	for _, want := range []string{"…", "f1 help", "row 12 of 1,204"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in %q", want, got)
+		}
+	}
+	if strings.Contains(got, "f filter") {
+		t.Errorf("a third hint cut the breadcrumb: %q", got)
 	}
 }
 

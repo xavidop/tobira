@@ -27,4 +27,4 @@ connections                 │no collection open                        │AI �
                             │                                          │                                                
                             │                                          │                                                
                             │                                          │> ask about this connection…                    
-local                                                                                f1 help  : cmd  f filter  q quit  ●
+local                                                                  enter send  ctrl+o load  ctrl+y copy  esc grid  ●

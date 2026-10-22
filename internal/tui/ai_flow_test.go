@@ -899,7 +899,7 @@ func TestProgramAIPanelFlow(t *testing.T) {
 		tm.Send(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 	tm.Send(key("enter"))
-	waitFor("ctrl+o load")
+	waitFor("ctrl+o load · f5 run") // the proposal's footer, not the status bar hint
 	tm.Send(keyF5)
 	waitFor("Ada Lovelace")
 	tm.Send(key("esc"))

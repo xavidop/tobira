@@ -27,4 +27,4 @@ connections                 │add connection
                             │                                                                       
                             │                                                                       
                             │enter next · ctrl+s save · ctrl+t test · esc cancel                    
-local                                                            f1 help  : cmd  f filter  q quit  ●
+local                                         f1 help  enter open  / filter  n add  : cmd  q quit  ●
