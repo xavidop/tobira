@@ -291,10 +291,19 @@ func TestAIAnswerModeShowsToolCalls(t *testing.T) {
 	if req := f.Calls()[0].Req.(assistant.AnswerRequest); req.AllowExecute {
 		t.Fatal("execute offered by default")
 	}
-	// In a narrow panel the input is cut, never the outcome.
+	// In a narrow panel the line wraps whole: the input and the outcome
+	// both stay readable, nothing is cut.
 	h.send(tea.WindowSizeMsg{Width: 50, Height: winH})
-	if txt := h.text(); !strings.Contains(txt, "…") || !strings.Contains(txt, "→ 1 row") {
-		t.Fatalf("narrow tool line lost its outcome:\n%s", txt)
+	txt = h.text()
+	for _, want := range []string{"select count(*) from", "tobira_people → 1 row", "error: boom"} {
+		if !strings.Contains(txt, want) {
+			t.Fatalf("narrow tool line lost %q:\n%s", want, txt)
+		}
+	}
+	for _, l := range strings.Split(txt, "\n") {
+		if strings.HasPrefix(l, "▸ ") && strings.Contains(l, "…") {
+			t.Fatalf("narrow tool line was cut:\n%s", txt)
+		}
 	}
 	// :ask! sends in answer mode from anywhere.
 	h.keys("tab", "esc") // back to ask, then leave
