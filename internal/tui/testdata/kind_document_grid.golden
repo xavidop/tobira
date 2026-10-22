@@ -1,0 +1,30 @@
+connections                 │local ▸ main ▸ pages · 210 rows                                        
+▾ ● local                   │active  scores           nested       title         extra              
+  ▾ main                    │NULL    NULL             NULL         NULL          —                  
+      tobira_people         │true    NULL             NULL         NULL          —                  
+      docs                  │NULL    [1, 2.5, "n/a"]  NULL         NULL          —                  
+      kv                    │NULL    NULL             {deep: {…}}  NULL          —                  
+      vecs                  │NULL    NULL             NULL         only a title  —                  
+      cpu                   │NULL    NULL             NULL         NULL          —                  
+      pages                 │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+                            │NULL    NULL             NULL         NULL          —                  
+local › main › pages  row 1 of 210  T                         f1 help  : cmd  f filter  q quit  ●

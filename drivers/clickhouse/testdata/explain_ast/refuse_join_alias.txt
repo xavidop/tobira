@@ -1,0 +1,19 @@
+SelectWithUnionQuery (children 1)
+ ExpressionList (children 1)
+  SelectQuery (children 2)
+   ExpressionList (children 1)
+    Asterisk
+   TablesInSelectQuery (children 2)
+    TablesInSelectQueryElement (children 1)
+     TableExpression (children 1)
+      TableIdentifier t1
+    TablesInSelectQueryElement (children 2)
+     TableExpression (children 1)
+      Function url (alias u) (children 1)
+       ExpressionList (children 3)
+        Literal \'http://x\'
+        Identifier CSV
+        Literal \'a String\'
+     TableJoin (children 1)
+      ExpressionList (children 1)
+       Identifier a

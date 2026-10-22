@@ -1,0 +1,24 @@
+{
+  "columns": [
+    {
+      "name": "id",
+      "type": "int"
+    },
+    {
+      "name": "person_id",
+      "type": "int"
+    },
+    {
+      "name": "status",
+      "type": "text"
+    }
+  ],
+  "rows": [
+    [
+      1,
+      3,
+      "open"
+    ]
+  ],
+  "truncated": true
+}

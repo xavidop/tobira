@@ -1,0 +1,162 @@
+{
+	"folders": {},
+	"connections": {
+		"postgres-jdbc-1": {
+			"provider": "postgresql",
+			"driver": "postgres-jdbc",
+			"name": "Orders DB",
+			"save-password": true,
+			"configuration": {
+				"host": "db.example.test",
+				"port": "5432",
+				"database": "orders",
+				"url": "jdbc:postgresql://db.example.test:5432/orders",
+				"user": "alice",
+				"password": "Fx-S3cret-Pw-42",
+				"type": "dev"
+			}
+		},
+		"mysql8-2": {
+			"provider": "mysql",
+			"driver": "mysql8",
+			"name": "local-pg",
+			"configuration": {
+				"host": "localhost",
+				"port": "3306",
+				"database": "shop",
+				"user": "bob"
+			}
+		},
+		"mariadb-3": {
+			"provider": "mariadb",
+			"driver": "mariaDB",
+			"name": "Maria",
+			"configuration": {"host": "maria.example.test", "port": 3307, "database": "app"}
+		},
+		"sqlite-4": {
+			"provider": "generic",
+			"driver": "sqlite_jdbc",
+			"name": "Local file",
+			"configuration": {"database": "/tmp/fixture.db", "url": "jdbc:sqlite:/tmp/fixture.db"}
+		},
+		"oracle-5": {
+			"provider": "oracle",
+			"driver": "oracle_thin",
+			"name": "Legacy Oracle",
+			"configuration": {"host": "ora.example.test", "port": "1521", "user": "scott", "password": "Fx-S3cret-Pw-42"}
+		},
+		"postgres-jdbc-6": {
+			"provider": "postgresql",
+			"driver": "postgres-jdbc",
+			"name": "URL only",
+			"configuration": {"url": "jdbc:postgresql://url.example.test:6543/reports?user=carol&password=Fx-S3cret-Pw-42&ssl=true"}
+		},
+		"clickhouse-7": {
+			"provider": "clickhouse",
+			"driver": "com_clickhouse",
+			"name": "Events",
+			"configuration": {"host": "ch.example.test", "port": "8123", "database": "events", "user": "default"}
+		},
+		"broken-8": {
+			"provider": "postgresql",
+			"name": 42,
+			"configuration": {}
+		},
+		"sqlserver-9": {
+			"provider": "sqlserver",
+			"driver": "microsoft",
+			"name": "Billing",
+			"configuration": {"host": "sql.example.test", "port": "1433", "database": "billing", "user": "sa"}
+		},
+		"cassandra-10": {
+			"provider": "cassandra",
+			"driver": "cassandra",
+			"name": "Ring",
+			"configuration": {"host": "cass.example.test", "port": 9042, "database": "metrics"}
+		},
+		"bigquery-11": {
+			"provider": "bigquery",
+			"driver": "google_bigquery_jdbc_simba",
+			"name": "Analytics",
+			"configuration": {"host": "www.googleapis.com", "database": "acme-analytics"}
+		},
+		"dynamodb-12": {
+			"provider": "dynamodb",
+			"driver": "dynamodb",
+			"name": "Dynamo",
+			"configuration": {"host": "dynamodb.eu-west-1.amazonaws.com"}
+		},
+		"dynamodb-13": {
+			"provider": "dynamodb",
+			"driver": "dynamodb",
+			"name": "Dynamo local",
+			"configuration": {"host": "localhost", "port": "8000"}
+		},
+		"elasticsearch-14": {
+			"provider": "elasticsearch",
+			"driver": "elasticsearch",
+			"name": "Search",
+			"configuration": {"host": "es.example.test", "port": "9200", "user": "elastic"}
+		},
+		"libsql-15": {
+			"provider": "libsql",
+			"driver": "libsql",
+			"name": "Turso",
+			"configuration": {"host": "db-acme.turso.example.test"}
+		},
+		"snowflake-16": {
+			"provider": "snowflake",
+			"driver": "snowflake",
+			"name": "Warehouse",
+			"configuration": {"host": "xy12345.eu-west-1.snowflakecomputing.com", "database": "SALES", "user": "ada"}
+		},
+		"duckdb-17": {
+			"provider": "generic",
+			"driver": "duckdb_jdbc",
+			"name": "Duck",
+			"configuration": {"url": "jdbc:duckdb:/tmp/fixture.duckdb"}
+		},
+		"vertica-18": {
+			"provider": "vertica",
+			"driver": "vertica-jdbc",
+			"name": "Columnar",
+			"configuration": {"host": "vt.example.test", "port": "5433", "database": "analytics", "user": "dbadmin"}
+		},
+		"redshift-19": {
+			"provider": "redshift",
+			"driver": "redshift",
+			"name": "RS",
+			"configuration": {"host": "rs.example.test", "port": "5439", "database": "dev", "user": "awsuser"}
+		},
+		"cockroach-20": {
+			"provider": "postgresql",
+			"driver": "cockroachdb",
+			"name": "Roach",
+			"configuration": {"host": "crdb.example.test", "port": "26257", "database": "bank", "user": "root"}
+		},
+		"greenplum-21": {
+			"provider": "greenplum",
+			"driver": "greenplum",
+			"name": "GP",
+			"configuration": {"host": "gp.example.test", "database": "warehouse"}
+		},
+		"singlestore-22": {
+			"provider": "singlestore",
+			"driver": "singlestore",
+			"name": "S2",
+			"configuration": {"host": "s2.example.test", "port": "3306", "database": "app", "user": "admin"}
+		},
+		"duckdb-23": {
+			"provider": "duckdb",
+			"driver": "duckdb",
+			"name": "Duck file",
+			"configuration": {"database": "/tmp/other.duckdb"}
+		},
+		"opensearch-24": {
+			"provider": "opensearch",
+			"driver": "opensearch",
+			"name": "Logs",
+			"configuration": {"host": "os.example.test", "port": "9200", "database": "logs", "user": "admin"}
+		}
+	}
+}

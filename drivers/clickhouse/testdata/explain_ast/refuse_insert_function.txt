@@ -1,0 +1,11 @@
+InsertQuery   (children 2)
+ Function url (children 1)
+  ExpressionList (children 3)
+   Literal \'http://x\'
+   Identifier CSV
+   Literal \'a String\'
+ SelectWithUnionQuery (children 1)
+  ExpressionList (children 1)
+   SelectQuery (children 1)
+    ExpressionList (children 1)
+     Literal UInt64_1

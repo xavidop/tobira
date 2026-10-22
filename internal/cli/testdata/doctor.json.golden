@@ -1,0 +1,112 @@
+{
+  "checks": [
+    {
+      "section": "config",
+      "name": "file",
+      "status": "ok",
+      "detail": "$CONFIG"
+    },
+    {
+      "section": "connections",
+      "name": "local-pg",
+      "status": "ok",
+      "detail": "not pinged (--no-ping); driver fake"
+    },
+    {
+      "section": "connections",
+      "name": "nodrv",
+      "status": "fail",
+      "detail": "unknown driver \"nope\" (tobira driver list shows them)"
+    },
+    {
+      "section": "refs",
+      "name": "connection local-pg",
+      "status": "ok",
+      "detail": "env ref resolves"
+    },
+    {
+      "section": "refs",
+      "name": "ai.api_key",
+      "status": "fail",
+      "detail": "env ref does not resolve: not found"
+    },
+    {
+      "section": "drivers",
+      "name": "fake",
+      "status": "ok",
+      "detail": "builtin, other 0.1.0"
+    },
+    {
+      "section": "drivers",
+      "name": "sqlite",
+      "status": "ok",
+      "detail": "builtin, sql"
+    },
+    {
+      "section": "plugins",
+      "name": "plugins",
+      "status": "ok",
+      "detail": "none found in the plugins directory or on PATH"
+    },
+    {
+      "section": "ai",
+      "name": "provider",
+      "status": "ok",
+      "detail": "anthropic"
+    },
+    {
+      "section": "ai",
+      "name": "model",
+      "status": "ok",
+      "detail": "provider default"
+    },
+    {
+      "section": "ai",
+      "name": "api_key",
+      "status": "fail",
+      "detail": "ai.api_key: env ref does not resolve: not found"
+    },
+    {
+      "section": "mcp",
+      "name": "expose local-pg",
+      "status": "ok",
+      "detail": "connection exists"
+    },
+    {
+      "section": "mcp",
+      "name": "expose gone",
+      "status": "fail",
+      "detail": "no connection with that name"
+    },
+    {
+      "section": "mcp",
+      "name": "token",
+      "status": "ok",
+      "detail": "not set; tobira mcp --http generates one at start"
+    },
+    {
+      "section": "history",
+      "name": "db",
+      "status": "ok",
+      "detail": "not created yet ($STATE/tobira/history.db); the first query creates it"
+    },
+    {
+      "section": "permissions",
+      "name": "config",
+      "status": "ok",
+      "detail": "0600 $CONFIG"
+    },
+    {
+      "section": "permissions",
+      "name": "history",
+      "status": "ok",
+      "detail": "$STATE/tobira/history.db does not exist"
+    },
+    {
+      "section": "permissions",
+      "name": "plugins dir",
+      "status": "ok",
+      "detail": "$XDG/tobira/plugins does not exist"
+    }
+  ]
+}

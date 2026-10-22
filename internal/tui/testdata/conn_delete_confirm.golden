@@ -1,0 +1,30 @@
+connections                 │delete connection                                                      
+▸ ● local                   │Delete connection "local"?                                             
+▸ ● ro                      │It is removed from the config file. Type its name to confirm.          
+                            │                                                                       
+                            │> lo                                                                   
+                            │                                                                       
+                            │enter delete · esc cancel                                              
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+local                                                            f1 help  : cmd  f filter  q quit  ●

@@ -1,0 +1,748 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Each module is tested independently against its own go.mod (no workspace).
+  GOWORK: off
+
+jobs:
+  discover:
+    name: Discover modules
+    runs-on: ubuntu-latest
+    outputs:
+      dirs: ${{ steps.set.outputs.dirs }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: set
+        name: Find all Go modules
+        run: |
+          dirs=$(find . -name go.mod -not -path './site/*' -not -path './**/testdata/*' \
+            -exec dirname {} \; | sort | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "dirs=$dirs" >> "$GITHUB_OUTPUT"
+          echo "Modules: $dirs"
+
+  test:
+    name: test ${{ matrix.dir }}
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: ${{ fromJSON(needs.discover.outputs.dirs) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: ${{ matrix.dir }}/go.mod
+          cache-dependency-path: ${{ matrix.dir }}/go.sum
+      - name: go build
+        working-directory: ${{ matrix.dir }}
+        run: go build ./...
+      - name: go vet
+        working-directory: ${{ matrix.dir }}
+        run: go vet ./...
+      # Integration tests carry a //go:build integration tag, so no default
+      # build compiles them. Type-checking them costs nothing (no credentials,
+      # no network) and keeps a refactor from quietly orphaning them.
+      - name: go vet (integration build tag)
+        working-directory: ${{ matrix.dir }}
+        run: go vet -tags integration ./...
+      # -coverpkg=./... measures how much of the whole module each test binary
+      # reaches, not just the package under test, which is the honest number for
+      # a library whose tests deliberately drive it from the outside.
+      - name: go test (race, coverage)
+        working-directory: ${{ matrix.dir }}
+        run: go test -race -count=1 -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
+      # Each matrix job owns its own step summary, so this writes a complete
+      # fragment rather than a bare table row with no header.
+      - name: Coverage summary
+        working-directory: ${{ matrix.dir }}
+        run: |
+          total=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}')
+          {
+            echo "### Coverage: \`${{ matrix.dir }}\`"
+            echo
+            echo "**$total** of statements"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Total coverage for ${{ matrix.dir }}: $total"
+      - name: Name the coverage artifact
+        id: slug
+        run: echo "v=$(echo '${{ matrix.dir }}' | sed 's|^\./||; s|/|-|g; s|^\.$|core|')" >> "$GITHUB_OUTPUT"
+      - name: Upload coverage profile
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-${{ steps.slug.outputs.v }}
+          path: ${{ matrix.dir }}/coverage.out
+          retention-days: 14
+
+  # Runs the driver tests that need a real server: pgvector/pgvector:pg17
+  # (PostgreSQL 17 with the pgvector extension) started by testcontainers (Docker is available on ubuntu-latest). This includes the
+  # drivertest conformance kit.
+  integration:
+    name: integration drivers/postgres
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/postgres/go.mod
+          cache-dependency-path: drivers/postgres/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/postgres
+        run: go test -race -count=1 -tags integration ./...
+
+  # The same for MySQL: mysql:8.4 started by testcontainers, including the
+  # conformance kit and the read-only guard probes.
+  integration-mysql:
+    name: integration drivers/mysql
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/mysql/go.mod
+          cache-dependency-path: drivers/mysql/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/mysql
+        run: go test -race -count=1 -tags integration ./...
+
+  # MongoDB: mongo:8 as a single-node replica set (plus a standalone one for
+  # the change-stream refusal) started by testcontainers, including the
+  # conformance kit and the read-only guard probes.
+  integration-mongodb:
+    name: integration drivers/mongodb
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/mongodb/go.mod
+          cache-dependency-path: drivers/mongodb/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/mongodb
+        run: go test -race -count=1 -tags integration ./...
+
+  # Redis: redis:8 started by testcontainers (plus a short-lived second
+  # container with rename-command), including the conformance kit and the
+  # read-only guard probes.
+  integration-redis:
+    name: integration drivers/redis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/redis/go.mod
+          cache-dependency-path: drivers/redis/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/redis
+        run: go test -race -count=1 -tags integration ./...
+
+  # The same for ClickHouse: clickhouse/clickhouse-server:25.8 started by
+  # testcontainers, including the conformance kit (native and HTTP) and the
+  # read-only guard probes.
+  integration-clickhouse:
+    name: integration drivers/clickhouse
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/clickhouse/go.mod
+          cache-dependency-path: drivers/clickhouse/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/clickhouse
+        run: go test -race -count=1 -tags integration ./...
+
+  # Qdrant: qdrant/qdrant:v1.19.2 started by testcontainers, including the
+  # conformance kit, the read-only probes and the read-only API key check.
+  integration-qdrant:
+    name: integration drivers/qdrant
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/qdrant/go.mod
+          cache-dependency-path: drivers/qdrant/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/qdrant
+        run: go test -race -count=1 -tags integration ./...
+
+  # InfluxDB 3: influxdb:3.6-core started by testcontainers (auth on, admin
+  # token created in the container), including the conformance kit and the
+  # read-only guard probes.
+  integration-influxdb:
+    name: integration drivers/influxdb
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/influxdb/go.mod
+          cache-dependency-path: drivers/influxdb/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/influxdb
+        run: go test -race -count=1 -tags integration ./...
+
+  # Microsoft SQL Server: mssql/server:2022 started by testcontainers,
+  # including the conformance kit, the lexer probes and the read-only guard.
+  integration-mssql:
+    name: integration drivers/mssql
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/mssql/go.mod
+          cache-dependency-path: drivers/mssql/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/mssql
+        run: go test -race -count=1 -tags integration ./...
+
+  # Cassandra: cassandra:5.0.9 started by testcontainers (password auth,
+  # ByteOrderedPartitioner so the fixture's ordered read is expressible,
+  # UDFs and materialized views on), including the strict conformance kit
+  # with the wide-column fixture and the read-only guard probes.
+  integration-cassandra:
+    name: integration drivers/cassandra
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/cassandra/go.mod
+          cache-dependency-path: drivers/cassandra/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/cassandra
+        run: go test -race -count=1 -tags integration ./...
+
+  # Oracle Database: gvenzl/oracle-free:23.26.3-slim started by
+  # testcontainers, including the conformance kit, the lexer probes and the
+  # read-only guard.
+  integration-oracle:
+    name: integration drivers/oracle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/oracle/go.mod
+          cache-dependency-path: drivers/oracle/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/oracle
+        run: go test -race -count=1 -tags integration ./...
+
+  # libSQL: ghcr.io/tursodatabase/libsql-server:v0.24.33 (sqld) started by
+  # testcontainers with JWT auth, including the conformance kit, the
+  # read-only guard and its rollback layer, and the transaction keep-alive.
+  integration-libsql:
+    name: integration drivers/libsql
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/libsql/go.mod
+          cache-dependency-path: drivers/libsql/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/libsql
+        run: go test -race -count=1 -tags integration ./...
+
+  # Cloudflare D1: drivertest Strict against the in-process fake of the D1
+  # REST API (httptest + modernc SQLite). No container, and not run against
+  # Cloudflare.
+  conformance-d1:
+    name: conformance drivers/d1 (fake D1 API)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/d1/go.mod
+          cache-dependency-path: drivers/d1/go.sum
+      - name: go test (race)
+        working-directory: drivers/d1
+        run: go test -race -count=1 ./...
+
+  # Snowflake: fakesnow 0.11.22 (testdata/Dockerfile: python:3.13.9-slim +
+  # fakesnow[server], pinned) built and started by testcontainers, including
+  # the conformance kit (Explainer hidden: fakesnow cannot EXPLAIN; BadAuth
+  # against an httptest fake) and the read-only probes. EXPLAIN and the
+  # authenticators run against an httptest fake of the REST API in the unit
+  # tests. Not tested against real Snowflake.
+  integration-snowflake:
+    name: integration drivers/snowflake
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/snowflake/go.mod
+          cache-dependency-path: drivers/snowflake/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/snowflake
+        run: go test -race -count=1 -tags integration ./...
+
+  # Firestore: gcr.io/google.com/cloudsdktool/google-cloud-cli:590.0.0-emulators
+  # started by testcontainers (gcloud emulators firestore start), including the
+  # conformance kit, the read-only guard probes and snapshot-listener Watch.
+  integration-firestore:
+    name: integration drivers/firestore
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/firestore/go.mod
+          cache-dependency-path: drivers/firestore/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/firestore
+        run: go test -race -count=1 -tags integration ./...
+
+  # Elasticsearch and OpenSearch: elasticsearch:8.19.23 (security on: TLS
+  # and a password), then opensearch:2.19.7 (plain, then with security), one
+  # engine per run, started by testcontainers: the conformance kit in strict
+  # mode on both, the read-only guard probes, and API keys, TLS and vector
+  # search on Elasticsearch.
+  integration-elasticsearch:
+    name: integration drivers/elasticsearch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/elasticsearch/go.mod
+          cache-dependency-path: drivers/elasticsearch/go.sum
+      - name: go test (race, integration, Elasticsearch)
+        working-directory: drivers/elasticsearch
+        run: go test -race -count=1 -tags integration ./...
+      - name: go test (race, integration, OpenSearch)
+        working-directory: drivers/elasticsearch
+        env:
+          TOBIRA_SEARCH_ENGINE: opensearch
+        run: go test -race -count=1 -tags integration ./...
+      - name: go test (race, integration, OpenSearch with security)
+        working-directory: drivers/elasticsearch
+        env:
+          TOBIRA_SEARCH_ENGINE: opensearch-secure
+        run: go test -race -count=1 -tags integration ./...
+
+  # BigQuery: ghcr.io/goccy/bigquery-emulator:0.8.1 started by testcontainers,
+  # including the conformance kit, the read-only probes (lexical layer) and the
+  # lexer-versus-ZetaSQL checks. The dry-run layer runs against a fake API in
+  # the unit tests, because the emulator reports every statement as a SELECT.
+  integration-bigquery:
+    name: integration drivers/bigquery
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/bigquery/go.mod
+          cache-dependency-path: drivers/bigquery/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/bigquery
+        run: go test -race -count=1 -tags integration ./...
+
+  # DynamoDB: amazon/dynamodb-local:3.3.2 started by testcontainers
+  # (-inMemory -sharedDb), including the conformance kit, the read-only guard
+  # probes and DynamoDB Streams.
+  integration-dynamodb:
+    name: integration drivers/dynamodb
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/dynamodb/go.mod
+          cache-dependency-path: drivers/dynamodb/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/dynamodb
+        run: go test -race -count=1 -tags integration ./...
+
+  # Pinecone: ghcr.io/pinecone-io/pinecone-local:v0.7.0 (amd64) started by
+  # testcontainers, including the conformance kit, the per-index metric
+  # checks and the read-only guard probes. Not tested against Pinecone's cloud.
+  integration-pinecone:
+    name: integration drivers/pinecone
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/pinecone/go.mod
+          cache-dependency-path: drivers/pinecone/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/pinecone
+        run: go test -race -count=1 -tags integration ./...
+
+  # Cosmos DB: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-EN20261019
+  # (the vnext-preview Linux emulator, http mode) started by testcontainers,
+  # including the conformance kit, the read-only guard probes, the change
+  # feed and VectorDistance. Not tested against the Azure service.
+  integration-cosmos:
+    name: integration drivers/cosmos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/cosmos/go.mod
+          cache-dependency-path: drivers/cosmos/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/cosmos
+        run: go test -race -count=1 -tags integration ./...
+
+  # Weaviate: cr.weaviate.io/semitechnologies/weaviate:1.40.2 started twice by
+  # testcontainers (anonymous access, and API-key mode for BadAuth): the
+  # conformance kit in strict mode, the read-only guard (module egress:
+  # nearText/hybrid on a remote vectorizer, generate, ask, rerank), browse,
+  # editing, similarity search and API keys.
+  integration-weaviate:
+    name: integration drivers/weaviate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/weaviate/go.mod
+          cache-dependency-path: drivers/weaviate/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/weaviate
+        run: go test -race -count=1 -tags integration ./...
+
+  # Chroma: chromadb/chroma:1.5.9 started by testcontainers behind an
+  # in-process token-checking proxy (the open-source server has no auth):
+  # the conformance kit in strict mode with BadAuth, the read-only guard,
+  # browse, editing, the three distance spaces and the host-embedder-only
+  # rule for query texts.
+  integration-chroma:
+    name: integration drivers/chroma
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/chroma/go.mod
+          cache-dependency-path: drivers/chroma/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/chroma
+        run: go test -race -count=1 -tags integration ./...
+
+  # Vertica: opentext/vertica-k8s:25.4.0-0-multiarch (the Community Edition
+  # images left Docker Hub; 26.1+ refuses the CE license) started idle by
+  # testcontainers and bootstrapped by testdata/bootstrap.sh, including the
+  # conformance kit, the server lexing probes and the read-only guard.
+  integration-vertica:
+    name: integration drivers/vertica
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/vertica/go.mod
+          cache-dependency-path: drivers/vertica/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/vertica
+        run: go test -race -count=1 -tags integration ./...
+
+  # Milvus: milvusdb/milvus:v2.6.25 standalone (embedded etcd, local
+  # storage, authorization on) started by testcontainers, including the
+  # conformance kit, the load policy and the egress refusals (a fake
+  # embedding provider on the host, reached through host-gateway).
+  integration-milvus:
+    name: integration drivers/milvus
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/milvus/go.mod
+          cache-dependency-path: drivers/milvus/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/milvus
+        run: go test -race -count=1 -tags integration ./...
+
+  # The DuckDB driver is an external plugin because it needs cgo, so it
+  # cannot cross-compile: each release platform builds natively with the
+  # plugin's own goreleaser config (never tobira's release). The discovered
+  # test matrix runs its suite on Linux; this proves every platform builds and
+  # runs the suite where the e2e test applies.
+  plugin-duckdb:
+    name: plugin duckdb ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-latest, macos-15-intel, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/duckdb/go.mod
+          cache-dependency-path: drivers/duckdb/go.sum
+      - name: goreleaser build (native, cgo)
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: "v2.18.3"
+          workdir: drivers/duckdb
+          args: build --snapshot --clean --single-target
+      - name: go test (race)
+        if: runner.os != 'Windows'
+        working-directory: drivers/duckdb
+        run: go test -race -count=1 ./...
+      - name: sha256 of the plugin binary
+        shell: bash
+        working-directory: drivers/duckdb
+        run: |
+          bin=$(find dist -type f \( -name tobira-driver-duckdb -o -name tobira-driver-duckdb.exe \) | head -n 1)
+          test -n "$bin"
+          if command -v sha256sum >/dev/null; then sha256sum "$bin"; else shasum -a 256 "$bin"; fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tobira-driver-duckdb-${{ matrix.os }}
+          path: drivers/duckdb/dist/**/tobira-driver-duckdb*
+          retention-days: 14
+
+  # The AI assistant's tests that need a real server: the postgres error
+  # scrub (postgres:17 and mysql:8.4 started by testcontainers).
+  integration-ai:
+    name: integration ai
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: ai/go.mod
+          cache-dependency-path: ai/go.sum
+      - name: go test (race, integration)
+        working-directory: ai
+        run: go test -race -count=1 -tags integration ./...
+
+  # The end-to-end AI tests run the real binary against a fake model provider
+  # (no network). They build only with -tags aifake, so a default build never
+  # contains the fake provider, and nothing else here compiles them.
+  aifake:
+    name: aifake ${{ matrix.target.dir }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - { dir: ".", pkgs: "./internal/config/..." }
+          - { dir: "ai", pkgs: "./..." }
+          - { dir: "cmd/tobira", pkgs: "./..." }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: ${{ matrix.target.dir }}/go.mod
+          cache-dependency-path: ${{ matrix.target.dir }}/go.sum
+      - name: go vet (aifake build tag)
+        working-directory: ${{ matrix.target.dir }}
+        run: go vet -tags aifake ${{ matrix.target.pkgs }}
+      - name: go test (race, aifake build tag)
+        working-directory: ${{ matrix.target.dir }}
+        run: go test -race -count=1 -tags aifake ${{ matrix.target.pkgs }}
+      - name: golangci-lint (aifake build tag)
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+          working-directory: ${{ matrix.target.dir }}
+          args: --build-tags aifake ${{ matrix.target.pkgs }}
+
+  # The plugin protocol's generated Go code (plugin/proto) is committed; this
+  # regenerates it with the pinned buf and plugins and fails when the
+  # committed code differs.
+  proto:
+    name: proto freshness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: make proto-check
+        run: make proto-check
+
+  lint:
+    name: lint ${{ matrix.dir }}
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: ${{ fromJSON(needs.discover.outputs.dirs) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: ${{ matrix.dir }}/go.mod
+          cache-dependency-path: ${{ matrix.dir }}/go.sum
+      - name: golangci-lint
+        # v8 supports golangci-lint v2; the version is pinned for reproducibility
+        # and the timeout lives in .golangci.yml (run.timeout).
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+          working-directory: ${{ matrix.dir }}
+      - name: golangci-lint (integration build tag)
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+          working-directory: ${{ matrix.dir }}
+          args: --build-tags integration
+
+  # The Linux test matrix above cannot see a break in platform-specific code
+  # (terminal handling, paths) and the CLI ships as a Homebrew cask. This
+  # job builds and type-checks both modules on macOS and Windows, and runs the
+  # full suite on macOS. Windows stays at build+vet.
+  cross-platform:
+    name: ${{ matrix.os }} ${{ matrix.dir }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+        dir: [".", "cmd/tobira"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: ${{ matrix.dir }}/go.mod
+          cache-dependency-path: ${{ matrix.dir }}/go.sum
+      - name: go build
+        working-directory: ${{ matrix.dir }}
+        run: go build ./...
+      # vet type-checks the _test.go files too, so a test that only compiles on
+      # Linux fails here rather than silently never running.
+      - name: go vet
+        working-directory: ${{ matrix.dir }}
+        run: go vet ./...
+      - name: go test (race)
+        if: runner.os == 'macOS'
+        working-directory: ${{ matrix.dir }}
+        run: go test -race -count=1 ./...
+
+  # govulncheck is call-graph aware, so an advisory in a module we require but
+  # never call does not fail the build. One job loops every module so a single
+  # log shows the whole picture.
+  govulncheck:
+    name: govulncheck
+    needs: discover
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: Scan every module
+        run: |
+          # Absolute path: the scan runs from inside each module directory.
+          govulncheck="$(go env GOPATH)/bin/govulncheck"
+          failed=""
+          for dir in $(echo '${{ needs.discover.outputs.dirs }}' | jq -r '.[]'); do
+            echo "::group::govulncheck $dir"
+            if (cd "$dir" && "$govulncheck" ./...); then
+              echo "OK $dir"
+            else
+              echo "::error::govulncheck found a reachable vulnerability in $dir"
+              failed="$failed $dir"
+            fi
+            echo "::endgroup::"
+          done
+          if [ -n "$failed" ]; then
+            echo "Modules with reachable vulnerabilities:$failed"
+            exit 1
+          fi
+          echo "No reachable vulnerabilities in any module."
+
+  # dependabot.yml is hand-maintained while the matrix above is discovered, so
+  # the two drift apart silently and a new module never gets a dependency
+  # update. Fail instead.
+  dependabot-coverage:
+    name: Dependabot covers every module
+    needs: discover
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+      - run: pip install --disable-pip-version-check pyyaml
+      - name: Every Go module must have a gomod entry
+        run: python3 .github/scripts/check_dependabot_coverage.py '${{ needs.discover.outputs.dirs }}'
+
+  gofmt:
+    name: gofmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l $(find . -name '*.go' -not -path './**/testdata/*'))
+          if [ -n "$unformatted" ]; then
+            echo "These files are not gofmt-ed:"; echo "$unformatted"; exit 1
+          fi
+
+  check-deps:
+    name: Root module has no database SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Check root dependencies
+        run: bash .github/scripts/check_root_deps.sh .
+      - name: The denylist catches every driver SDK
+        run: bash .github/scripts/check_root_deps_selftest.sh
+
+  check-claims:
+    name: README makes no unshipped claims
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Check README claims
+        run: bash .github/scripts/check_readme_claims.sh
+      - name: Check docs against the CLI, drivers and roadmap
+        run: bash .github/scripts/check_docs_claims.sh
+
+  docs:
+    name: Docs build & link check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - name: Install dependencies
+        working-directory: site
+        run: npm ci || npm install
+      - name: Build the docs site
+        working-directory: site
+        run: npm run build
+      - name: Check for broken internal links
+        working-directory: site
+        run: npm run linkcheck

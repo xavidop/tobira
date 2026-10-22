@@ -1,0 +1,838 @@
+---
+import type { MarkdownHeading } from "astro";
+import Layout from "./Layout.astro";
+import Search from "../components/Search.astro";
+
+const { frontmatter, headings = [] } = Astro.props as {
+  frontmatter?: { title?: string };
+  headings?: MarkdownHeading[];
+};
+const title = frontmatter?.title
+  ? `${frontmatter.title} - tobira docs`
+  : "tobira docs";
+
+// In-page table of contents: the h2/h3 headings of the current page, rendered
+// on the right with scroll-spy so a reader always sees where they are. Astro
+// generates a slug for every heading (matching the anchor id it emits), so the
+// links here point straight at those anchors. Rendered only when a page has
+// enough structure to be worth navigating (2+ entries).
+const pageHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
+const showPageToc = pageHeadings.length >= 2;
+
+const base = import.meta.env.BASE_URL;
+
+// Ordered, grouped multi-page navigation. slug "" is the docs index. An item
+// with sub: true is a subpage of the item above it and is drawn indented.
+type NavItem = { slug: string; title: string; sub?: boolean };
+const groups: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Start",
+    items: [
+      { slug: "", title: "Introduction" },
+      { slug: "install", title: "Install" },
+      { slug: "quickstart", title: "Quick start" },
+      { slug: "concepts", title: "Concepts" },
+    ],
+  },
+  {
+    label: "Terminal UI",
+    items: [
+      { slug: "tui", title: "Overview" },
+      { slug: "tui/browsing", title: "Browsing", sub: true },
+      { slug: "tui/kind-views", title: "Kind views", sub: true },
+      { slug: "tui/commands", title: "Commands", sub: true },
+      { slug: "editor", title: "Query editor" },
+      { slug: "editing", title: "Editing rows" },
+      { slug: "export", title: "Export" },
+      { slug: "keymaps", title: "Keymaps" },
+      { slug: "history", title: "Query history" },
+    ],
+  },
+  {
+    label: "Connections",
+    items: [
+      { slug: "connections", title: "Managing connections" },
+      { slug: "connections/import", title: "Importing connections", sub: true },
+      { slug: "secrets", title: "Passwords and secrets" },
+      { slug: "configuration", title: "Configuration" },
+    ],
+  },
+  {
+    label: "Command line",
+    items: [
+      { slug: "cli", title: "CLI reference" },
+      { slug: "cli/query", title: "tobira query", sub: true },
+      { slug: "cli/connect", title: "tobira connect", sub: true },
+      { slug: "cli/connections", title: "tobira connections", sub: true },
+      { slug: "cli/ask", title: "tobira ask", sub: true },
+      { slug: "cli/mcp", title: "tobira mcp", sub: true },
+      { slug: "cli/history", title: "tobira history", sub: true },
+      { slug: "cli/driver", title: "tobira driver", sub: true },
+      { slug: "cli/doctor", title: "tobira doctor", sub: true },
+      { slug: "cli/watch", title: "tobira watch", sub: true },
+    ],
+  },
+  {
+    label: "AI and agents",
+    items: [
+      { slug: "ai", title: "AI assistant" },
+      { slug: "ai/configuration", title: "Configuration", sub: true },
+      { slug: "ai/using", title: "Using the assistant", sub: true },
+      { slug: "ai/privacy", title: "Data and safety", sub: true },
+      { slug: "ai/prompts", title: "Prompts", sub: true },
+      { slug: "mcp", title: "MCP server" },
+      { slug: "mcp/clients", title: "Client setup", sub: true },
+      { slug: "mcp/tools", title: "Tools and resources", sub: true },
+      { slug: "mcp/http", title: "HTTP mode", sub: true },
+    ],
+  },
+  {
+    label: "Drivers",
+    items: [
+      { slug: "drivers", title: "Overview" },
+    ],
+  },
+  {
+    label: "SQL drivers",
+    items: [
+      { slug: "drivers/redshift", title: "Amazon Redshift" },
+      { slug: "drivers/d1", title: "Cloudflare D1" },
+      { slug: "drivers/cockroachdb", title: "CockroachDB" },
+      { slug: "drivers/greenplum", title: "Greenplum" },
+      { slug: "drivers/libsql", title: "libSQL / Turso" },
+      { slug: "drivers/mariadb", title: "MariaDB" },
+      { slug: "drivers/mysql", title: "MySQL" },
+      { slug: "drivers/oracle", title: "Oracle" },
+      { slug: "drivers/postgres", title: "PostgreSQL" },
+      { slug: "drivers/postgres/queries", title: "PostgreSQL: queries, browsing and editing", sub: true },
+      { slug: "drivers/postgres/read-only", title: "PostgreSQL: read-only guard", sub: true },
+      { slug: "drivers/postgres/listen-and-export", title: "PostgreSQL: LISTEN and COPY export", sub: true },
+      { slug: "drivers/singlestore", title: "SingleStore" },
+      { slug: "drivers/mssql", title: "SQL Server" },
+      { slug: "drivers/sqlite", title: "SQLite" },
+    ],
+  },
+  {
+    label: "Analytical drivers",
+    items: [
+      { slug: "drivers/bigquery", title: "BigQuery" },
+      { slug: "drivers/clickhouse", title: "ClickHouse" },
+      { slug: "drivers/snowflake", title: "Snowflake" },
+      { slug: "drivers/vertica", title: "Vertica" },
+    ],
+  },
+  {
+    label: "Document and key-value drivers",
+    items: [
+      { slug: "drivers/dynamodb", title: "Amazon DynamoDB" },
+      { slug: "drivers/cosmos", title: "Azure Cosmos DB" },
+      { slug: "drivers/cassandra", title: "Cassandra" },
+      { slug: "drivers/firestore", title: "Cloud Firestore" },
+      { slug: "drivers/firestore/queries", title: "Firestore: queries and types", sub: true },
+      { slug: "drivers/firestore/browsing", title: "Firestore: browsing, editing and watching", sub: true },
+      { slug: "drivers/mongodb", title: "MongoDB" },
+      { slug: "drivers/redis", title: "Redis" },
+    ],
+  },
+  {
+    label: "Search drivers",
+    items: [
+      { slug: "drivers/elasticsearch", title: "Elasticsearch / OpenSearch" },
+    ],
+  },
+  {
+    label: "Time-series drivers",
+    items: [
+      { slug: "drivers/influxdb", title: "InfluxDB" },
+    ],
+  },
+  {
+    label: "Vector drivers",
+    items: [
+      { slug: "drivers/chroma", title: "Chroma" },
+      { slug: "drivers/milvus", title: "Milvus" },
+      { slug: "drivers/pgvector", title: "pgvector" },
+      { slug: "drivers/pinecone", title: "Pinecone" },
+      { slug: "drivers/qdrant", title: "Qdrant" },
+      { slug: "drivers/weaviate", title: "Weaviate" },
+    ],
+  },
+  {
+    label: "Plugin drivers",
+    items: [
+      { slug: "drivers/duckdb", title: "DuckDB" },
+    ],
+  },
+  {
+    label: "Extend",
+    items: [
+      { slug: "write-a-driver", title: "Write a driver" },
+      { slug: "write-a-driver/module", title: "Driver module", sub: true },
+      { slug: "write-a-driver/conformance", title: "Conformance kit", sub: true },
+      { slug: "write-a-driver/plugin", title: "External plugin", sub: true },
+      { slug: "plugin-protocol", title: "Plugin protocol" },
+      { slug: "plugin-protocol/host", title: "Plugin host", sub: true },
+      { slug: "plugin-protocol/wire", title: "Wire protocol", sub: true },
+    ],
+  },
+  {
+    label: "Help",
+    items: [
+      { slug: "security", title: "Security" },
+      { slug: "security/read-only", title: "Security: read-only guard", sub: true },
+      { slug: "security/network", title: "Security: network credentials", sub: true },
+      { slug: "security/ai-and-mcp", title: "Security: AI and MCP", sub: true },
+      { slug: "security/plugins", title: "Security: plugin trust", sub: true },
+      { slug: "troubleshooting", title: "Troubleshooting" },
+      { slug: "troubleshooting/connections", title: "Troubleshooting: connections and passwords", sub: true },
+      { slug: "troubleshooting/read-only", title: "Troubleshooting: read-only refusals", sub: true },
+      { slug: "troubleshooting/drivers", title: "Troubleshooting: driver connections", sub: true },
+      { slug: "troubleshooting/ai-and-mcp", title: "Troubleshooting: AI and MCP", sub: true },
+      { slug: "troubleshooting/plugins", title: "Troubleshooting: plugins", sub: true },
+    ],
+  },
+  {
+    label: "Project",
+    items: [
+      { slug: "contributing", title: "Contributing" },
+      { slug: "roadmap", title: "What's next" },
+    ],
+  },
+];
+
+// Emit directory-style hrefs with a trailing slash so relative links inside
+// pages resolve the same way no matter how the visitor arrived.
+const hrefFor = (slug?: string) => {
+  const s = slug ?? "";
+  return base + "docs/" + (s ? s + "/" : "");
+};
+const norm = (p: string) => p.replace(/\/+$/, "") || "/";
+const here = norm(Astro.url.pathname);
+
+const flat = groups.flatMap((g) => g.items).filter((i) => typeof i.slug === "string");
+const idx = flat.findIndex((i) => norm(hrefFor(i.slug)) === here);
+const prev = idx > 0 ? flat[idx - 1] : null;
+const next = idx >= 0 && idx < flat.length - 1 ? flat[idx + 1] : null;
+---
+
+<Layout title={title}>
+  <div class="docs wrap">
+    <aside class="toc" data-toc aria-label="Docs navigation">
+      <Search />
+      <button class="toc__toggle" data-toc-toggle aria-controls="toc-nav" aria-expanded="false">
+        <span>Documentation menu</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+      </button>
+      <div class="toc__inner" id="toc-nav">
+        {
+          groups.map((g) => (
+            <div class="toc__group">
+              <p class="toc__title">{g.label}</p>
+              <ul>
+                {g.items.map((i) => (
+                  <li>
+                    <a
+                      href={hrefFor(i.slug)}
+                      aria-current={norm(hrefFor(i.slug)) === here ? "page" : undefined}
+                      class:list={[
+                        "toc__link",
+                        { "toc__link--sub": i.sub },
+                        { "toc__link--active": norm(hrefFor(i.slug)) === here },
+                      ]}
+                    >
+                      {i.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+      </div>
+    </aside>
+
+    <article class="doc">
+      <slot />
+
+      <nav class="doc-nav" aria-label="Page navigation">
+        {
+          prev ? (
+            <a class="doc-nav__link doc-nav__link--prev" href={hrefFor(prev.slug)}>
+              <span>← Previous</span>
+              <strong>{prev.title}</strong>
+            </a>
+          ) : (
+            <span />
+          )
+        }
+        {
+          next && (
+            <a class="doc-nav__link doc-nav__link--next" href={hrefFor(next.slug)}>
+              <span>Next →</span>
+              <strong>{next.title}</strong>
+            </a>
+          )
+        }
+      </nav>
+    </article>
+
+    {
+      showPageToc && (
+        <aside class="page-toc" aria-label="On this page">
+          <p class="page-toc__title">On this page</p>
+          <ul>
+            {pageHeadings.map((h) => (
+              <li
+                class:list={[
+                  "page-toc__item",
+                  { "page-toc__item--sub": h.depth === 3 },
+                ]}
+              >
+                <a href={`#${h.slug}`} class="page-toc__link" data-toc-link={h.slug}>
+                  {h.text}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      )
+    }
+  </div>
+</Layout>
+
+<style is:global>
+  .docs {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr) 200px;
+    gap: 3rem;
+    padding-block: 3rem 4rem;
+    align-items: start;
+  }
+  .toc {
+    position: sticky;
+    top: 84px;
+    max-height: calc(100vh - 100px);
+    display: flex;
+    flex-direction: column;
+  }
+  .toc__inner {
+    overflow-y: auto;
+    min-height: 0;
+  }
+  .toc__group {
+    margin-bottom: 1.4rem;
+  }
+  .toc__title {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted-2);
+    margin: 0 0 0.5rem;
+  }
+  .toc ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.15rem;
+  }
+  .toc__link {
+    display: block;
+    font-size: 0.92rem;
+    color: var(--muted);
+    padding: 0.3rem 0.7rem;
+    border-radius: 8px;
+    border-left: 2px solid transparent;
+    transition:
+      color 0.2s var(--ease),
+      background 0.2s var(--ease),
+      border-color 0.2s var(--ease);
+  }
+  .toc__link--sub {
+    margin-left: 0.85rem;
+    font-size: 0.88rem;
+  }
+  .toc__link:hover {
+    color: var(--rail-deep);
+    background: var(--bg-3);
+  }
+  .toc__link--active {
+    color: var(--rail-deep);
+    background: var(--rail-soft);
+    border-left-color: var(--rail);
+    font-weight: 500;
+  }
+
+  .doc {
+    max-width: 880px;
+    font-size: 1.02rem;
+  }
+  /* Keep prose at a readable measure, but let tables, code, and diagrams use
+     the full content width so wide tables are not cramped. */
+  .doc > p,
+  .doc > ul,
+  .doc > ol,
+  .doc > blockquote {
+    max-width: 72ch;
+  }
+  .doc > :first-child {
+    margin-top: 0;
+  }
+  /* Images, such as the demo GIF, never grow past the content column. */
+  .doc img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+  }
+  /* Headings set their own bottom margin. The global reset zeroes every
+     heading margin, which left a h2 sitting directly on the paragraph under
+     it with only the line-height between them: the heading read as part of
+     the sentence rather than as a label above it. */
+  .doc h1 {
+    font-size: var(--step-4);
+    margin-bottom: 1rem;
+  }
+  .doc h2 {
+    font-size: var(--step-2);
+    margin-top: 3.2rem;
+    padding-top: 1.5rem;
+    margin-bottom: 1.15rem;
+    border-top: 1px solid var(--line);
+    scroll-margin-top: 84px;
+  }
+  .doc h3 {
+    font-size: var(--step-1);
+    margin-top: 2.4rem;
+    margin-bottom: 0.85rem;
+    scroll-margin-top: 84px;
+  }
+  .doc h4 {
+    font-size: var(--step-0);
+    margin-top: 1.9rem;
+    margin-bottom: 0.7rem;
+    scroll-margin-top: 84px;
+  }
+  /* A heading immediately followed by a table or a code block needs the same
+     gap; those elements carry their own margin, so collapse it into one. */
+  .doc h2 + table,
+  .doc h3 + table,
+  .doc h4 + table,
+  .doc h2 + pre,
+  .doc h3 + pre,
+  .doc h4 + pre {
+    margin-top: 0;
+  }
+  .doc p {
+    color: var(--muted);
+  }
+  .doc strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .doc a:not(.badge):not(.doc-nav__link) {
+    color: var(--rail-deep);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: color-mix(in srgb, var(--rail) 45%, transparent);
+  }
+  .doc a:not(.doc-nav__link):hover {
+    text-decoration-color: var(--rail);
+  }
+  .doc ul,
+  .doc ol {
+    color: var(--muted);
+    padding-left: 1.2rem;
+  }
+  .doc li {
+    margin: 0.35rem 0;
+  }
+  .doc li::marker {
+    color: var(--rail);
+  }
+  .doc :not(pre) > code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    padding: 0.1rem 0.4rem;
+    border-radius: 6px;
+    color: var(--rail-deep);
+  }
+  .doc pre.astro-code,
+  .doc pre {
+    background: var(--code-bg) !important;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1.15rem 1.3rem;
+    overflow-x: auto;
+    margin: 1.2rem 0;
+    font-size: 0.95rem;
+    line-height: 1.7;
+  }
+  /* Dark mode takes Shiki's second theme. Three selectors, matching the
+     pattern in global.css exactly: the media query is the default "system"
+     state and must not win over an explicit light choice, and the data-theme
+     rules are the toggle in both directions. Without this the tokens keep
+     their light-theme colours and punctuation disappears. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .doc .astro-code,
+    :root:not([data-theme="light"]) .doc .astro-code span {
+      color: var(--shiki-dark) !important;
+      background-color: transparent !important;
+    }
+  }
+  :root[data-theme="dark"] .doc .astro-code,
+  :root[data-theme="dark"] .doc .astro-code span {
+    color: var(--shiki-dark) !important;
+    background-color: transparent !important;
+  }
+
+  .doc pre code {
+    background: none;
+    border: 0;
+    padding: 0;
+  }
+  .doc blockquote {
+    margin: 1.4rem 0;
+    padding: 0.6rem 1.1rem;
+    border-left: 3px solid var(--rail);
+    background: var(--rail-soft);
+    border-radius: 0 10px 10px 0;
+  }
+  .doc blockquote p {
+    color: var(--ink);
+    margin: 0;
+  }
+  /* A table is a block scroll container so a genuinely wide one can be
+     dragged sideways rather than clipped. The scrollbar is asked for
+     explicitly: macOS hides overlay scrollbars until something scrolls, so a
+     table that overflowed simply looked cut off, with nothing to say the rest
+     was still there. */
+  .doc table {
+    width: 100%;
+    max-width: 100%;
+    border-collapse: collapse;
+    margin: 1.2rem 0;
+    font-size: 0.86rem;
+    display: block;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .doc th,
+  .doc td {
+    text-align: left;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--line);
+    color: var(--muted);
+    vertical-align: top;
+  }
+  .doc th {
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.02em;
+  }
+  /* Code in a table cell wraps: the cells hold import paths like
+     github.com/xavidop/tobira/driver/registry, and one of those unwrapped
+     would force the whole table wider than the content column.
+     box-decoration-break keeps each fragment of a wrapped pill looking like a
+     pill instead of one open-ended box. */
+  .doc td code,
+  .doc th code {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+  /* Short code stays whole. Wrapping alone is not enough: the browser breaks
+     at every hyphen and dot it finds, so driver.ErrReadOnly and --filter
+     came apart mid-identifier with room to spare on the line. remarkTableCode
+     in astro.config.mjs flags the ones short enough to fit a column. */
+  .doc td code.code-atom,
+  .doc th code.code-atom {
+    white-space: nowrap;
+  }
+  .doc th,
+  .doc td {
+    overflow-wrap: break-word;
+  }
+  .doc hr {
+    border: 0;
+    border-top: 1px solid var(--line);
+    margin: 2.5rem 0;
+  }
+
+  .doc-nav {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 3.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .doc-nav__link {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.9rem 1.2rem;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--bg-2);
+    min-width: 44%;
+    transition:
+      border-color 0.2s var(--ease),
+      transform 0.2s var(--ease);
+  }
+  .doc-nav__link:hover {
+    border-color: var(--rail);
+    transform: translateY(-2px);
+  }
+  .doc-nav__link--next {
+    text-align: right;
+  }
+  .doc-nav__link span {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--muted-2);
+  }
+  .doc-nav__link strong {
+    color: var(--rail-deep);
+  }
+
+  .page-toc {
+    position: sticky;
+    top: 84px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    font-size: 0.85rem;
+  }
+  .page-toc__title {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted-2);
+    margin: 0 0 0.6rem;
+  }
+  .page-toc ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.1rem;
+    border-left: 1px solid var(--line);
+  }
+  .page-toc__item {
+    margin: 0;
+  }
+  .page-toc__link {
+    display: block;
+    color: var(--muted-2);
+    padding: 0.25rem 0.8rem;
+    margin-left: -1px;
+    border-left: 2px solid transparent;
+    line-height: 1.35;
+    transition:
+      color 0.2s var(--ease),
+      border-color 0.2s var(--ease);
+  }
+  .page-toc__item--sub .page-toc__link {
+    padding-left: 1.6rem;
+    font-size: 0.8rem;
+  }
+  .page-toc__link:hover {
+    color: var(--rail-deep);
+  }
+  .page-toc__link--active {
+    color: var(--rail-deep);
+    border-left-color: var(--rail);
+    font-weight: 500;
+  }
+
+  .toc__toggle {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    background: var(--bg-2);
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    font-family: var(--font-body);
+    font-size: 0.92rem;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .toc__toggle svg {
+    color: var(--muted-2);
+    transition: transform 0.22s var(--ease);
+  }
+  .toc[data-open] .toc__toggle svg {
+    transform: rotate(180deg);
+  }
+
+  @media (max-width: 1180px) {
+    .docs {
+      grid-template-columns: 220px minmax(0, 1fr);
+    }
+    .page-toc {
+      display: none;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .docs {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0;
+      padding-block: 1.5rem 3rem;
+    }
+    .toc {
+      position: static;
+      max-height: none;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 1.2rem;
+      margin-bottom: 1.5rem;
+    }
+    .toc__toggle {
+      display: flex;
+      margin-top: 0.25rem;
+    }
+    .toc__inner {
+      display: none;
+      margin-top: 0.5rem;
+      max-height: 65vh;
+      overflow-y: auto;
+    }
+    .toc[data-open] .toc__inner {
+      display: block;
+    }
+    .toc__group {
+      margin-bottom: 0.9rem;
+    }
+  }
+</style>
+
+<script>
+  const tocToggle = document.querySelector("[data-toc-toggle]");
+  const toc = document.querySelector("[data-toc]");
+  if (tocToggle && toc) {
+    tocToggle.addEventListener("click", () => {
+      const open = toc.toggleAttribute("data-open");
+      tocToggle.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    toc.querySelectorAll(".toc__inner a").forEach((a) => {
+      a.addEventListener("click", () => {
+        toc.removeAttribute("data-open");
+        tocToggle.setAttribute("aria-expanded", "false");
+      });
+    });
+  }
+
+  // Keep your place in the sidebar across page loads: this is a multi-page
+  // site, so each navigation re-renders the nav scrolled to the top. Bring the
+  // active entry back into view within the nav's own scroll container (only the
+  // container scrolls, never the page), so the sidebar does not jump to the top
+  // every time you follow a link.
+  const tocInner = document.getElementById("toc-nav");
+  const activeLink = tocInner?.querySelector(".toc__link--active");
+  if (tocInner && activeLink) {
+    const c = tocInner.getBoundingClientRect();
+    const a = activeLink.getBoundingClientRect();
+    if (a.top < c.top || a.bottom > c.bottom) {
+      tocInner.scrollTop += a.top - c.top - c.height / 2 + a.height / 2;
+    }
+  }
+</script>
+
+<script>
+  // Scroll-spy for the on-this-page TOC: highlight the section the reader is
+  // currently in. The active heading is the last one whose top has scrolled
+  // above a line ~100px below the viewport top, computed on scroll (throttled
+  // with requestAnimationFrame) so it stays deterministic rather than relying
+  // on IntersectionObserver's fire-order across fast scrolls.
+  const tocLinks = Array.from(document.querySelectorAll("[data-toc-link]"));
+  if (tocLinks.length) {
+    const linkBySlug = new Map(
+      tocLinks.map((a) => [a.getAttribute("data-toc-link"), a]),
+    );
+    const headingEls = tocLinks
+      .map((a) => document.getElementById(a.getAttribute("data-toc-link") || ""))
+      .filter((el) => el !== null);
+
+    let activeSlug: string | null = null;
+    const setActive = (slug: string | null) => {
+      if (slug === activeSlug) return;
+      if (activeSlug) linkBySlug.get(activeSlug)?.classList.remove("page-toc__link--active");
+      activeSlug = slug;
+      if (slug) linkBySlug.get(slug)?.classList.add("page-toc__link--active");
+    };
+
+    // A click on a TOC link wins over the scroll-spy until the reader scrolls
+    // again. Without this, clicking an entry whose section sits in the last
+    // screenful highlights a different one the moment the smooth scroll
+    // settles, because that heading can never reach the activation line (see
+    // the bottom-of-page case in update below).
+    let pinned: string | null = null;
+
+    const update = () => {
+      if (pinned) {
+        setActive(pinned);
+        return;
+      }
+
+      let current = headingEls[0];
+      for (const h of headingEls) {
+        if (h.getBoundingClientRect().top - 100 <= 0) current = h;
+        else break;
+      }
+
+      // Once the page is scrolled to the bottom, every remaining heading is
+      // stuck below the activation line forever: there is no scroll left to
+      // bring it up. The reader is looking at the last section, so say so
+      // rather than leaving the previous one highlighted.
+      const doc = document.documentElement;
+      const atBottom =
+        Math.ceil(window.scrollY + window.innerHeight) >= doc.scrollHeight - 1;
+      if (atBottom) {
+        const last = headingEls[headingEls.length - 1];
+        if (last) current = last;
+      }
+
+      setActive(current ? current.id : null);
+    };
+
+    // Pin on click, release on the reader's next deliberate scroll. A plain
+    // scroll listener cannot release it, because the click's own smooth scroll
+    // fires scroll events too.
+    for (const a of tocLinks) {
+      a.addEventListener("click", () => {
+        const slug = a.getAttribute("data-toc-link");
+        if (!slug) return;
+        pinned = slug;
+        setActive(slug);
+      });
+    }
+    for (const ev of ["wheel", "touchmove", "keydown"]) {
+      window.addEventListener(ev, () => { pinned = null; }, { passive: true });
+    }
+
+    let ticking = false;
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => {
+          update();
+          ticking = false;
+        });
+      },
+      { passive: true },
+    );
+    update();
+  }
+</script>

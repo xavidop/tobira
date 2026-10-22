@@ -1,0 +1,30 @@
+connections                 │add connection                                                         
+▸ ● local                   │┃ Name                                                                 
+▸ ● ro                      │┃ letters, digits, . _ -                                               
+                            │┃ > db                                                                 
+                            │  Driver                                                               
+                            │  fake (other)                                                         
+                            │  DSN                                                                  
+                            │  no password here; use the password ref below                         
+                            │  >                                                                    
+                            │  Password ref (optional)                                              
+                            │  env:NAME, file:///path, dotenv://path#KEY or keyring:NAME (tobira    
+                            │  connections set-password stores one); TOBIRA_CONN_<NAME>_PASSWORD    
+                            │  also works                                                           
+                            │  >                                                                    
+                            │  Read-only                                                            
+                            │                                                                       
+                            │    Yes     No                                                         
+                            │  Color                                                                
+                            │  (none)                                                               
+                            │  Tags (comma-separated)                                               
+                            │  >                                                                    
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │enter next · ctrl+s save · ctrl+t test · esc cancel                    
+local                                                            f1 help  : cmd  f filter  q quit  ●

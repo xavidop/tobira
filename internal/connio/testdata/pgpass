@@ -1,0 +1,10 @@
+# synthetic pgpass fixture (never real credentials)
+
+db.example.test:5432:orders:alice:Fx-S3cret-Pw-42
+db.example.test:5432:orders:audit:Fx-S3cret-Pw-42
+\:\:1:5433:we\\ird:bob:Fx\:S3c\\ret
+*:5432:*:ops:Fx-S3cret-Pw-42
+only:three:fields
+replica.example.test::analytics:dave:
+   # an indented hash is not a comment in libpq; this line is malformed
+localhost:5432:local-pg:eve:Fx-S3cret-Pw-42

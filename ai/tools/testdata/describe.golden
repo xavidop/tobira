@@ -1,0 +1,58 @@
+{
+  "namespace": "main",
+  "collection": "orders",
+  "type": "table",
+  "fields": [
+    {
+      "name": "id",
+      "type": "int",
+      "nullable": false,
+      "auto_increment": true
+    },
+    {
+      "name": "person_id",
+      "type": "int",
+      "nullable": true
+    },
+    {
+      "name": "status",
+      "type": "text",
+      "nullable": true,
+      "default": "'open'",
+      "comment": "order state"
+    }
+  ],
+  "primary_key": [
+    "id"
+  ],
+  "indexes": [
+    {
+      "name": "orders_pkey",
+      "fields": [
+        "id"
+      ],
+      "unique": true,
+      "primary": true
+    },
+    {
+      "name": "orders_status",
+      "fields": [
+        "status"
+      ]
+    }
+  ],
+  "foreign_keys": [
+    {
+      "name": "orders_person",
+      "fields": [
+        "person_id"
+      ],
+      "references": "main.tobira_people",
+      "ref_fields": [
+        "id"
+      ]
+    }
+  ],
+  "row_estimate": 2,
+  "comment": "customer orders"
+}

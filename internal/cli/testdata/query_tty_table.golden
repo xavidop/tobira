@@ -1,0 +1,5 @@
+id  name           email               age  score   active  created_at            tags
+──  ─────────────  ──────────────────  ───  ──────  ──────  ────────────────────  ────────────────
+1   Ōtani Shōhei   user01@example.com  21   12.50   true    2026-01-02T03:04:05Z  ["admin","beta"]
+2   Conan O'Brien  user02@example.com  22   74.26   true    2026-01-03T05:04:05Z  ["beta"]
+3   Ada Lovelace   user03@example.com  23   111.39  false   2026-01-04T07:04:05Z  []

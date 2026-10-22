@@ -1,0 +1,30 @@
+connections                 │local ▸ similar to 1 · 6 rows                                          
+▾ ● local                   │ vecs   1:similar to 1                                                 
+  ▾ main                    │id    vec               payload                     _distance          
+      tobira_people         │1     [0.9, 0.3, 0, 0]  {label: "near", n: 10}      0                  
+      docs                  │2     [5, 0.1, 0, 0]    {label: "aligned", n: 20}   0.0451830967346383…
+      kv                    │3     [6, 6, 0, 0]      {label: "large", n: 30}     0.10557280011474834
+      vecs                  │4     [0, 1, 0, 0]      {label: "y-axis", n: 40}    0.683772215134518  
+      cpu                   │5     [0.1, 0, 2, 0]    {label: "z-ish", n: 50}     0.9526250164704554 
+      pages                 │6     [-1, 0, 0, 0.5]   {label: "opposite", n: 60}  1.8485281318042768 
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+local › 1:similar to 1  row 1 of 6  T                         f1 help  : cmd  f filter  q quit  ●

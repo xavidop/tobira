@@ -1,0 +1,37 @@
+dialect: sqlite
+kind: sql
+namespace: main
+collections:
+  - name: main.orders
+    role: in scope
+    type: table
+    fields:
+      - id INTEGER pk auto
+      - person_id INTEGER not null
+      - status TEXT default 'open'
+    foreign_keys:
+      - person_id -> main.tobira_people(id)
+  - name: main.tobira_people
+    role: referenced by main.orders
+    type: table
+    fields:
+      - id INTEGER pk auto
+      - name TEXT not null
+      - email TEXT not null
+      - age INTEGER
+      - score DECIMAL(10,2)
+      - active BOOLEAN
+      - created_at DATETIME
+      - tags JSON
+    indexes:
+      - sqlite_autoindex_tobira_people_1(email) unique
+  - name: main.items
+    role: references main.orders
+    type: table
+    fields:
+      - id INTEGER pk auto
+      - order_id INTEGER
+      - sku TEXT
+    foreign_keys:
+      - order_id -> main.orders(id)
+other_collections: [audit]

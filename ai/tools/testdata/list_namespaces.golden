@@ -1,0 +1,9 @@
+{
+  "namespaces": [
+    {
+      "name": "main",
+      "label": "namespace",
+      "default": true
+    }
+  ]
+}

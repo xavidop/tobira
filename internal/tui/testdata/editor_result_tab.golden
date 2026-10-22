@@ -1,0 +1,30 @@
+connections                 │local ▸ select * fro… · 1 row                                          
+▾ ● local                   │ tobira_people   1:select * fro…                                       
+  ▾ main                    │id    name          email               age   score  active  created_at
+      tobira_people         │1     Ōtani Shōhei  user01@example.com  21    12.50  true    2026-01-0…
+▸ ● ro                      │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │editor · local · fake · limit 1000 · f5 run                            
+                            │ 1 select * from tobira_people                                         
+                            │ 2 where id = 1                                                        
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+local › 1:select * fro…  row 1 of 1  T         f5 run  shift+f5 buffer  esc grid  ctrl+e close  ●

@@ -1,0 +1,78 @@
+{
+  "columns": [
+    {
+      "name": "id",
+      "type": "int"
+    },
+    {
+      "name": "name",
+      "type": "string"
+    },
+    {
+      "name": "email",
+      "type": "string"
+    },
+    {
+      "name": "age",
+      "type": "int"
+    },
+    {
+      "name": "score",
+      "type": "decimal"
+    },
+    {
+      "name": "active",
+      "type": "bool"
+    },
+    {
+      "name": "created_at",
+      "type": "time"
+    },
+    {
+      "name": "tags",
+      "type": "json"
+    }
+  ],
+  "rows": [
+    {
+      "id": 1,
+      "name": "Ōtani Shōhei",
+      "email": "user01@example.com",
+      "age": 21,
+      "score": 12.50,
+      "active": true,
+      "created_at": "2026-01-02T03:04:05Z",
+      "tags": [
+        "admin",
+        "beta"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Conan O'Brien",
+      "email": "user02@example.com",
+      "age": 22,
+      "score": 74.26,
+      "active": true,
+      "created_at": "2026-01-03T05:04:05Z",
+      "tags": [
+        "beta"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Ada Lovelace",
+      "email": "user03@example.com",
+      "age": 23,
+      "score": 111.39,
+      "active": false,
+      "created_at": "2026-01-04T07:04:05Z",
+      "tags": []
+    }
+  ],
+  "stats": {
+    "rows_affected": -1,
+    "duration_ms": 12,
+    "truncated": true
+  }
+}

@@ -1,0 +1,22 @@
+note: TablePlus keeps passwords in the macOS keychain, which tobira does not read; use tobira connections set-password
++ add    Prod-PG (from "Prod PG") (postgres) postgres://app@pg.example.test:5432/app
++ add    Cache (redis) redis://127.0.0.1:6379/2
++ add    Notes (sqlite) sqlite:/tmp/notes.db
+- skip   Warehouse: driver not available in this build
++ add    Docs (mongodb) mongodb://reader@mongo.example.test/docs
+- skip   Ledger: driver not available in this build
+- skip   Ora: driver not available in this build
+- skip   Ring: driver not available in this build
+- skip   BQ: driver not available in this build
+- skip   Duck: driver not available in this build
+- skip   Turso: driver not available in this build
+- skip   Edge: a Cloudflare D1 connection needs the account and database ids, which the import does not carry; add it with tobira connections add
+- skip   Columnar: driver not available in this build
+- skip   RS: driver not available in this build
+- skip   Roach: driver not available in this build
+- skip   GP: driver not available in this build
++ add    Maria (mariadb) mariadb://maria.example.test/app
+- skip   S2: driver not available in this build
+- skip   Search: driver not available in this build
+5 to add (0 renamed), 14 skipped
+dry run: nothing written. Re-run with --apply to write.

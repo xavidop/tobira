@@ -1,0 +1,30 @@
+connections                 │local ▸ main ▸ kv · row detail                                         
+▾ ● local                   │_key  │ queue:jobs                                                     
+  ▾ main                    │type  │ list                                                           
+      tobira_people         │ttl   │ 1h                                                             
+      docs                  │value │ ▾ [3 items]                                                    
+      kv                    │      │   [0]  j1                                                      
+      vecs                  │      │   [1]  j2                                                      
+      cpu                   │      │   [2]  j3                                                      
+      pages                 │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+local › main › kv  row 3 of 6  T                              f1 help  : cmd  f filter  q quit  ●

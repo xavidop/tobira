@@ -1,0 +1,72 @@
+# GoReleaser configuration for the tobira-driver-duckdb plugin, and only the
+# plugin: tobira's own release (the root .goreleaser.yaml) never builds it.
+#
+# DuckDB needs cgo (duckdb-go links a prebuilt static libduckdb per platform),
+# so this cannot cross-compile from one machine. Each platform builds on a
+# native runner with
+#
+#   goreleaser build --single-target --clean [--snapshot]
+#
+# from drivers/duckdb: linux/amd64 on ubuntu-24.04, linux/arm64 on
+# ubuntu-24.04-arm, darwin/arm64 on macos-latest, darwin/amd64 on
+# macos-15-intel and windows/amd64 on windows-latest (MinGW gcc).
+#
+# Releases: pushing a drivers/duckdb/vX.Y.Z tag runs
+# .github/workflows/release-duckdb.yml. It builds on each native runner with
+# GORELEASER_CURRENT_TAG=vX.Y.Z and --skip=validate (GoReleaser cannot parse
+# the drivers/duckdb/ prefix as a version), then publishes to the GitHub
+# release of that tag:
+#
+#   tobira-driver-duckdb_X.Y.Z_<os>_<arch>      (.exe on Windows)
+#   tobira-driver-duckdb_X.Y.Z_checksums.txt    (sha256)
+#
+# the names the archives and checksum sections below use. Users install one with
+#
+#   tobira driver install <url> --sha256 <hex> --name duckdb
+#
+# The binary is published unarchived so its URL can go straight to
+# `tobira driver install`.
+version: 2
+
+project_name: tobira-driver-duckdb
+
+builds:
+  - id: tobira-driver-duckdb
+    main: .
+    binary: tobira-driver-duckdb
+    env:
+      - CGO_ENABLED=1
+      - GOWORK=off
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ignore:
+      # duckdb-go ships no windows/arm64 library.
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/xavidop/tobira/drivers/duckdb/internal/duckdb.Version={{.Version}}
+
+archives:
+  - id: tobira-driver-duckdb
+    ids: [tobira-driver-duckdb]
+    formats: [binary]
+    name_template: "tobira-driver-duckdb_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "tobira-driver-duckdb_{{ .Version }}_checksums.txt"
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+# The release workflow assembles the native runners' builds and publishes
+# them (see above), so this config never creates a GitHub release by itself:
+# from a drivers/duckdb/ tag it could only publish to the wrong tag.
+release:
+  disable: true
+
+changelog:
+  disable: true

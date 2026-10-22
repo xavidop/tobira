@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="tobira: a doorway with a database cylinder seen through it">
+  <rect width="256" height="256" rx="56" fill="#0B1220"/>
+  <!-- door frame (扉) -->
+  <g fill="#E8ECF4">
+    <rect x="52" y="30" width="152" height="10" rx="3" opacity=".55"/>
+    <rect x="44" y="48" width="168" height="18" rx="4"/>
+    <rect x="60" y="64" width="18" height="142" rx="4"/>
+    <rect x="178" y="64" width="18" height="142" rx="4"/>
+  </g>
+  <!-- the database seen through the door -->
+  <g fill="none" stroke="#5EEAD4" stroke-width="10" stroke-linecap="round">
+    <ellipse cx="128" cy="100" rx="34" ry="12"/>
+    <path d="M94 100v60c0 6.6 15.2 12 34 12s34-5.4 34-12v-60"/>
+    <path d="M94 130c0 6.6 15.2 12 34 12s34-5.4 34-12"/>
+  </g>
+  <!-- terminal cursor -->
+  <rect x="106" y="214" width="44" height="8" rx="2" fill="#5EEAD4"/>
+</svg>

@@ -1,0 +1,29 @@
+note: DBeaver's encrypted credentials-config.json is not read; passwords come only from plain configuration fields
++ add    Orders-DB (from "Orders DB") (postgres) postgres://alice@db.example.test:5432/orders; password: skipped (no terminal to ask; pass --keyring-yes to store it)
+~ rename local-pg -> local-pg-imported (mysql) mysql://bob@localhost:3306/shop
++ add    Maria (mariadb) mariadb://maria.example.test:3307/app
++ add    Local-file (from "Local file") (sqlite) sqlite:/tmp/fixture.db
+- skip   Legacy Oracle: driver not available in this build
++ add    URL-only (from "URL only") (postgres) postgres://carol@url.example.test:6543/reports; password: skipped (no terminal to ask; pass --keyring-yes to store it)
+    note: password taken from the JDBC URL
+    note: other JDBC URL parameters were not imported
+- skip   Events: driver not available in this build
+- skip   entry 8: malformed entry
+- skip   Billing: driver not available in this build
+- skip   Ring: driver not available in this build
+- skip   Analytics: driver not available in this build
+- skip   Dynamo: driver not available in this build
+- skip   Dynamo local: no AWS region: a DynamoDB host must be dynamodb.<region>.amazonaws.com; add it with tobira connections add
+- skip   Search: driver not available in this build
+- skip   Turso: driver not available in this build
+- skip   Warehouse: driver not available in this build
+- skip   Duck: driver not available in this build
+- skip   Columnar: driver not available in this build
+- skip   RS: driver not available in this build
+- skip   Roach: driver not available in this build
+- skip   GP: driver not available in this build
+- skip   S2: driver not available in this build
+- skip   Duck file: driver not available in this build
+- skip   Logs: driver not available in this build
+5 to add (1 renamed), 19 skipped
+dry run: nothing written. Re-run with --apply to write.

@@ -1,0 +1,21 @@
+SECTION      NAME                 STATUS  DETAIL
+config       file                 ok      $CONFIG
+connections  local-pg             ok      not pinged (--no-ping); driver fake
+connections  nodrv                fail    unknown driver "nope" (tobira driver list shows them)
+refs         connection local-pg  ok      env ref resolves
+refs         ai.api_key           fail    env ref does not resolve: not found
+drivers      fake                 ok      builtin, other 0.1.0
+drivers      sqlite               ok      builtin, sql
+plugins      plugins              ok      none found in the plugins directory or on PATH
+ai           provider             ok      anthropic
+ai           model                ok      provider default
+ai           api_key              fail    ai.api_key: env ref does not resolve: not found
+mcp          expose local-pg      ok      connection exists
+mcp          expose gone          fail    no connection with that name
+mcp          token                ok      not set; tobira mcp --http generates one at start
+history      db                   ok      not created yet ($STATE/tobira/history.db); the first query creates it
+permissions  config               ok      0600 $CONFIG
+permissions  history              ok      $STATE/tobira/history.db does not exist
+permissions  plugins dir          ok      $XDG/tobira/plugins does not exist
+
+14 ok, 0 skip, 0 warn, 4 fail

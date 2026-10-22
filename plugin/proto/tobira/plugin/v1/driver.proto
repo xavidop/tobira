@@ -1,0 +1,778 @@
+// tobira driver plugin protocol, version 1.
+//
+// A plugin is a `tobira-driver-<name>` binary that hashicorp/go-plugin starts
+// with protocol version 1 and AllowedProtocols grpc. It serves the Driver
+// service below. The messages mirror package github.com/xavidop/tobira/driver
+// one to one; the comments name the Go type each message carries.
+//
+// # Edition and strings
+//
+// The file uses edition 2023 with implicit field presence (proto3 behaviour)
+// and utf8_validation NONE. Database text is not always valid UTF-8 (a Redis
+// key, a bytea cast to text, a latin1 column), and a driver.Value must cross
+// the boundary byte for byte, so no string field is validated. Readers in
+// other languages must treat string fields as possibly invalid UTF-8.
+//
+// # Field numbering
+//
+// Numbers are stable for the life of v1. A field is never renumbered and a
+// number is never reused: a removed field becomes `reserved` (number and
+// name). New fields take the next free number in their message. Oneof
+// members share their message's number space. An incompatible change is a
+// new package, tobira.plugin.v2.
+//
+// # Handles
+//
+// Open returns a ConnHandle and Begin a TxHandle. Both are opaque ids the
+// plugin chooses; the host only echoes them back. One plugin process serves
+// many connections.
+//
+// # Capabilities
+//
+// DriverInfo.capabilities and OpenResponse.capabilities use the
+// driver.Capability strings ("browser", "mutator", "explainer",
+// "transactor", "vector_searcher", "timeseries_reader", "graph_reader",
+// "completer", "exporter", "watcher", plus the declared guarantee
+// "readonly"). The host never calls an RPC whose capability the plugin did
+// not advertise; a plugin answers such a call with UNIMPLEMENTED.
+//
+// # Errors
+//
+// A failed RPC returns a gRPC status whose details carry one ErrorInfo. Its
+// kind is driver.KindName of the error ("not_found", "read_only", ...), and
+// the host rebuilds a *driver.Error from it. Messages are redacted by the
+// plugin with the ConnConfig, and redacted again by the host.
+//
+// # Result streams
+//
+// Query, Browse, TxQuery, Similar and Range stream ResultFrames: one
+// `columns` frame, then zero or more `rows` frames of 1 to 256 rows, then
+// one `stats` frame. A multi-statement result (driver.MultiResultSet)
+// repeats that sequence once per result set. A stream that ends without a
+// stats frame is an error.
+//
+// # Limits
+//
+// gRPC messages are capped at 16 MiB. The host also caps each Value at
+// 1 MiB encoded, a result at 4096 columns, every name (column, key,
+// native type, zone) at 64 KiB, nesting at 64 levels, Stats at 256
+// warnings and 256 notices of at most 64 KiB each and a 64 KiB next
+// cursor, and rejects anything larger.
+edition = "2023";
+
+package tobira.plugin.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+option features.field_presence = IMPLICIT;
+option features.utf8_validation = NONE;
+option go_package = "github.com/xavidop/tobira/plugin/proto/tobira/plugin/v1;pluginv1";
+
+// Driver is the service a plugin serves. It flattens driver.Driver, Conn, Tx
+// and the capability interfaces into one service keyed by handles.
+service Driver {
+  // driver.Driver.Info. Static: callable before any Open.
+  rpc Info(InfoRequest) returns (InfoResponse);
+  // driver.Driver.Open.
+  rpc Open(OpenRequest) returns (OpenResponse);
+  // driver.Conn.Close. Closing an unknown handle succeeds.
+  rpc Close(CloseRequest) returns (CloseResponse);
+  // driver.Conn.Ping.
+  rpc Ping(PingRequest) returns (PingResponse);
+
+  // driver.Conn.Namespaces.
+  rpc Namespaces(NamespacesRequest) returns (NamespacesResponse);
+  // driver.Conn.Collections.
+  rpc Collections(CollectionsRequest) returns (CollectionsResponse);
+  // driver.Conn.Describe.
+  rpc Describe(DescribeRequest) returns (DescribeResponse);
+
+  // driver.Querier.Query on a Conn.
+  rpc Query(QueryRequest) returns (stream ResultFrame);
+  // driver.Browser.Browse ("browser").
+  rpc Browse(BrowseRequest) returns (stream ResultFrame);
+
+  // driver.Mutator ("mutator").
+  rpc Insert(InsertRequest) returns (InsertResponse);
+  rpc Update(UpdateRequest) returns (UpdateResponse);
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+
+  // driver.Explainer.Explain on a Conn ("explainer").
+  rpc Explain(ExplainRequest) returns (ExplainResponse);
+
+  // driver.Transactor.Begin ("transactor").
+  rpc Begin(BeginRequest) returns (BeginResponse);
+  // driver.Querier.Query on a Tx.
+  rpc TxQuery(TxQueryRequest) returns (stream ResultFrame);
+  // driver.Mutator on a Tx, when BeginResponse.capabilities lists "mutator".
+  rpc TxMutate(TxMutateRequest) returns (TxMutateResponse);
+  // driver.Explainer on a Tx, when BeginResponse.capabilities lists "explainer".
+  rpc TxExplain(TxExplainRequest) returns (ExplainResponse);
+  // driver.Tx.Commit.
+  rpc Commit(CommitRequest) returns (CommitResponse);
+  // driver.Tx.Rollback. A no-op after Commit.
+  rpc Rollback(RollbackRequest) returns (RollbackResponse);
+
+  // driver.Completer.Complete ("completer").
+  rpc Complete(CompleteRequest) returns (CompleteResponse);
+  // driver.CatalogInvalidator.Invalidate, when OpenResponse.catalog_invalidator.
+  rpc Invalidate(InvalidateRequest) returns (InvalidateResponse);
+
+  // driver.VectorSearcher.Similar ("vector_searcher").
+  rpc Similar(SimilarRequest) returns (stream ResultFrame);
+  // driver.TimeSeriesReader.Range ("timeseries_reader").
+  rpc Range(RangeRequest) returns (stream ResultFrame);
+  // driver.GraphReader.Neighbors ("graph_reader"). Experimental, like the
+  // Go interface.
+  rpc Neighbors(NeighborsRequest) returns (NeighborsResponse);
+  // driver.Exporter.Export ("exporter"): the native bytes, in order.
+  // Exporter.ExportFormats travels in OpenResponse.export_formats.
+  rpc Export(ExportRequest) returns (stream ExportChunk);
+  // driver.Watcher.Watch ("watcher"). The stream ends when the call's
+  // context ends; a terminal failure is the last Event, with error set.
+  rpc Watch(WatchRequest) returns (stream Event);
+}
+
+// ---------------------------------------------------------------- values --
+
+// ValueType mirrors driver.Type, number for number.
+enum ValueType {
+  VALUE_TYPE_NULL = 0;
+  VALUE_TYPE_BOOL = 1;
+  VALUE_TYPE_INT = 2;
+  VALUE_TYPE_FLOAT = 3;
+  VALUE_TYPE_DECIMAL = 4;
+  VALUE_TYPE_STRING = 5;
+  VALUE_TYPE_BYTES = 6;
+  VALUE_TYPE_TIME = 7;
+  VALUE_TYPE_JSON = 8;
+  VALUE_TYPE_VECTOR = 9;
+  VALUE_TYPE_LIST = 10;
+  VALUE_TYPE_OBJECT = 11;
+  VALUE_TYPE_UNKNOWN = 12;
+}
+
+// Value is driver.Value. An unset oneof is an error, not NULL: NULL is
+// sent explicitly as `null`.
+message Value {
+  oneof kind {
+    Null null = 1;
+    bool bool_value = 2;
+    int64 int_value = 3;
+    // IEEE 754 bits, so NaN, +Inf and -Inf survive.
+    double float_value = 4;
+    // The canonical decimal text, e.g. "12.50".
+    string decimal_value = 5;
+    string string_value = 6;
+    bytes bytes_value = 7;
+    Time time_value = 8;
+    // Raw JSON text as the database sent it; not necessarily valid JSON.
+    string json_value = 9;
+    Vector vector_value = 10;
+    List list_value = 11;
+    Object object_value = 12;
+    Unknown unknown_value = 13;
+  }
+}
+
+// Null marks an explicit NULL.
+message Null {}
+
+// Time is a time.Time: the instant plus the zone it was expressed in, so the
+// host shows the same wall clock the database returned.
+message Time {
+  // The instant. Not range-checked: any time.Time is carried.
+  google.protobuf.Timestamp instant = 1;
+  // time.Location name: "UTC", "Local" or a zone name such as "CET".
+  string zone = 2;
+  // Offset from UTC in seconds at that instant.
+  int32 offset_seconds = 3;
+}
+
+// Vector is driver.Vector ([]float32).
+message Vector {
+  repeated float values = 1;
+}
+
+// List is driver.List.
+message List {
+  repeated Value values = 1;
+}
+
+// Object is driver.Object: members in order. Keys may repeat, so this is a
+// list, not a map.
+message Object {
+  repeated Member members = 1;
+}
+
+// Member is driver.Member.
+message Member {
+  string key = 1;
+  Value value = 2;
+}
+
+// Unknown is driver.Unknown: a native type tobira cannot model.
+message Unknown {
+  string native_type = 1;
+  bytes raw = 2;
+  string display = 3;
+}
+
+// Row is driver.Row, aligned with the result's columns.
+message Row {
+  repeated Value values = 1;
+}
+
+// ---------------------------------------------------------------- errors --
+
+// ErrorInfo is the detail of every failed RPC's gRPC status.
+message ErrorInfo {
+  // driver.KindName: "not_found", "auth", "permission", "read_only",
+  // "unsupported", "connection", "syntax", "constraint", "conflict",
+  // "limit", "unknown_driver"; "" when unclassified.
+  string kind = 1;
+  // driver.Error.Code: the native error code, "" when none.
+  string code = 2;
+  // The redacted message of the underlying error.
+  string message = 3;
+  // driver.Error.Driver and driver.Error.Op, when known.
+  string driver = 4;
+  string op = 5;
+}
+
+// ---------------------------------------------------------------- driver --
+
+// DriverInfo is driver.Info.
+message DriverInfo {
+  string name = 1;
+  string kind = 2;
+  repeated string schemes = 3;
+  string dialect = 4;
+  string version = 5;
+  repeated string capabilities = 6;
+}
+
+message InfoRequest {}
+
+message InfoResponse {
+  DriverInfo info = 1;
+}
+
+// ConnConfig is driver.ConnConfig without the host-side Embedder and Logger.
+// It carries the resolved password; go-plugin keeps the channel local
+// (a unix socket, or loopback with AutoMTLS).
+message ConnConfig {
+  string name = 1;
+  string driver = 2;
+  string dsn = 3;
+  string password = 4;
+  bool read_only = 5;
+  map<string, string> options = 6;
+}
+
+message ConnHandle {
+  string id = 1;
+}
+
+message TxHandle {
+  string id = 1;
+}
+
+message OpenRequest {
+  ConnConfig config = 1;
+}
+
+message OpenResponse {
+  ConnHandle conn = 1;
+  // driver.CapabilitiesOf(conn): what this connection really offers, a
+  // subset of DriverInfo.capabilities. The host's proxy reports it through
+  // driver.Supporter.
+  repeated string capabilities = 2;
+  // The Conn implements driver.CatalogInvalidator.
+  bool catalog_invalidator = 3;
+  // driver.Exporter.ExportFormats, when "exporter" is offered.
+  repeated string export_formats = 4;
+}
+
+message CloseRequest {
+  ConnHandle conn = 1;
+}
+
+message CloseResponse {}
+
+message PingRequest {
+  ConnHandle conn = 1;
+}
+
+message PingResponse {}
+
+// --------------------------------------------------------------- catalog --
+
+// CollectionRef is driver.CollectionRef.
+message CollectionRef {
+  string namespace = 1;
+  string name = 2;
+}
+
+// Namespace is driver.Namespace.
+message Namespace {
+  string name = 1;
+  string label = 2;
+  bool default = 3;
+  string comment = 4;
+}
+
+// Collection is driver.Collection.
+message Collection {
+  CollectionRef ref = 1;
+  string type = 2;
+  int64 row_estimate = 3;
+  string comment = 4;
+}
+
+// CollectionSchema is driver.CollectionSchema.
+message CollectionSchema {
+  CollectionRef ref = 1;
+  string type = 2;
+  repeated Field fields = 3;
+  repeated string primary_key = 4;
+  repeated Index indexes = 5;
+  repeated ForeignKey foreign_keys = 6;
+  int64 row_estimate = 7;
+  int64 size_bytes = 8;
+  bool schemaless = 9;
+  repeated Row sample = 10;
+  string comment = 11;
+  string ddl = 12;
+  // partition_key and clustering_key describe a wide-column table
+  // (driver.CollectionSchema.PartitionKey and ClusteringKey).
+  repeated string partition_key = 13;
+  repeated SortKey clustering_key = 14;
+}
+
+// Field is driver.Field.
+message Field {
+  string name = 1;
+  string native_type = 2;
+  ValueType type = 3;
+  bool nullable = 4;
+  string default = 5;
+  bool generated = 6;
+  bool auto_increment = 7;
+  string comment = 8;
+  repeated Field fields = 9;
+}
+
+// Index is driver.Index.
+message Index {
+  string name = 1;
+  repeated string fields = 2;
+  bool unique = 3;
+  bool primary = 4;
+  string method = 5;
+}
+
+// ForeignKey is driver.ForeignKey.
+message ForeignKey {
+  string name = 1;
+  repeated string fields = 2;
+  CollectionRef references = 3;
+  repeated string ref_fields = 4;
+}
+
+message NamespacesRequest {
+  ConnHandle conn = 1;
+}
+
+message NamespacesResponse {
+  repeated Namespace namespaces = 1;
+}
+
+message CollectionsRequest {
+  ConnHandle conn = 1;
+  // driver.NamespaceRef.Name.
+  string namespace = 2;
+}
+
+message CollectionsResponse {
+  repeated Collection collections = 1;
+}
+
+message DescribeRequest {
+  ConnHandle conn = 1;
+  CollectionRef ref = 2;
+}
+
+message DescribeResponse {
+  CollectionSchema schema = 1;
+}
+
+// ---------------------------------------------------------------- query --
+
+// Query is driver.Query.
+message Query {
+  string text = 1;
+  repeated Value params = 2;
+  string namespace = 3;
+  int64 limit = 4;
+  bool read_only = 5;
+}
+
+// Column is driver.Column.
+message Column {
+  string name = 1;
+  string native_type = 2;
+  ValueType type = 3;
+  // Unset when the source collection is unknown.
+  CollectionRef source = 4;
+  bool key = 5;
+}
+
+// Stats is driver.Stats.
+message Stats {
+  int64 rows_affected = 1;
+  google.protobuf.Duration duration = 2;
+  bool truncated = 3;
+  string next_cursor = 4;
+  repeated string warnings = 5;
+  repeated string notices = 6;
+}
+
+// Columns opens a result set.
+message Columns {
+  repeated Column columns = 1;
+}
+
+// RowBatch carries 1 to 256 rows; an empty batch is an error.
+message RowBatch {
+  repeated Row rows = 1;
+}
+
+// ResultFrame is one message of a result stream (see "Result streams").
+message ResultFrame {
+  oneof frame {
+    Columns columns = 1;
+    RowBatch rows = 2;
+    Stats stats = 3;
+  }
+}
+
+message QueryRequest {
+  ConnHandle conn = 1;
+  Query query = 2;
+}
+
+// SortKey is driver.SortKey.
+message SortKey {
+  string field = 1;
+  bool desc = 2;
+}
+
+// Condition is driver.Condition.
+message Condition {
+  string field = 1;
+  // driver.Op: "eq", "ne", "lt", "le", "gt", "ge", "contains", "prefix",
+  // "in", "is_null", "not_null".
+  string op = 2;
+  Value value = 3;
+}
+
+// Filter is driver.Filter.
+message Filter {
+  repeated Condition conditions = 1;
+  string raw = 2;
+}
+
+// BrowseOptions is driver.BrowseOptions.
+message BrowseOptions {
+  Filter filter = 1;
+  repeated SortKey sort = 2;
+  int64 limit = 3;
+  string cursor = 4;
+  bool read_only = 5;
+}
+
+message BrowseRequest {
+  ConnHandle conn = 1;
+  CollectionRef ref = 2;
+  BrowseOptions options = 3;
+}
+
+// -------------------------------------------------------------- mutator --
+
+message InsertRequest {
+  ConnHandle conn = 1;
+  CollectionRef ref = 2;
+  Object values = 3;
+}
+
+message InsertResponse {
+  Object key = 1;
+}
+
+message UpdateRequest {
+  ConnHandle conn = 1;
+  CollectionRef ref = 2;
+  Object key = 3;
+  Object changes = 4;
+}
+
+message UpdateResponse {}
+
+message DeleteRequest {
+  ConnHandle conn = 1;
+  CollectionRef ref = 2;
+  Object key = 3;
+}
+
+message DeleteResponse {}
+
+// ------------------------------------------------------------- explainer --
+
+// ExplainOptions is driver.ExplainOptions.
+message ExplainOptions {
+  bool analyze = 1;
+}
+
+// Plan is driver.Plan.
+message Plan {
+  string format = 1;
+  string text = 2;
+  // Unset when the driver gives no parsed tree.
+  PlanNode root = 3;
+}
+
+// PlanNode is driver.PlanNode.
+message PlanNode {
+  string label = 1;
+  string detail = 2;
+  double cost = 3;
+  int64 rows = 4;
+  repeated PlanNode children = 5;
+}
+
+message ExplainRequest {
+  ConnHandle conn = 1;
+  Query query = 2;
+  ExplainOptions options = 3;
+}
+
+message ExplainResponse {
+  Plan plan = 1;
+}
+
+// ------------------------------------------------------------ transactor --
+
+// TxOptions is driver.TxOptions.
+message TxOptions {
+  bool read_only = 1;
+  string isolation = 2;
+}
+
+message BeginRequest {
+  ConnHandle conn = 1;
+  TxOptions options = 2;
+}
+
+message BeginResponse {
+  TxHandle tx = 1;
+  // driver.CapabilitiesOf(tx): "mutator" and/or "explainer" when the Tx
+  // offers them.
+  repeated string capabilities = 2;
+}
+
+message TxQueryRequest {
+  TxHandle tx = 1;
+  Query query = 2;
+}
+
+message InsertOp {
+  CollectionRef ref = 1;
+  Object values = 2;
+}
+
+message UpdateOp {
+  CollectionRef ref = 1;
+  Object key = 2;
+  Object changes = 3;
+}
+
+message DeleteOp {
+  CollectionRef ref = 1;
+  Object key = 2;
+}
+
+message TxMutateRequest {
+  TxHandle tx = 1;
+  oneof op {
+    InsertOp insert = 2;
+    UpdateOp update = 3;
+    DeleteOp delete = 4;
+  }
+}
+
+message TxMutateResponse {
+  // The inserted row's key, for an insert.
+  Object key = 1;
+}
+
+message TxExplainRequest {
+  TxHandle tx = 1;
+  Query query = 2;
+  ExplainOptions options = 3;
+}
+
+message CommitRequest {
+  TxHandle tx = 1;
+}
+
+message CommitResponse {}
+
+message RollbackRequest {
+  TxHandle tx = 1;
+}
+
+message RollbackResponse {}
+
+// ------------------------------------------------------------- completer --
+
+message CompleteRequest {
+  ConnHandle conn = 1;
+  string text = 2;
+  // Byte offset into text.
+  int64 cursor = 3;
+  string namespace = 4;
+}
+
+// Completion is driver.Completion.
+message Completion {
+  string label = 1;
+  string kind = 2;
+  string detail = 3;
+  string insert = 4;
+}
+
+message CompleteResponse {
+  repeated Completion completions = 1;
+}
+
+message InvalidateRequest {
+  ConnHandle conn = 1;
+}
+
+message InvalidateResponse {}
+
+// ------------------------------------------------------- vector searcher --
+
+// VectorQuery is driver.VectorQuery. The host's embedder cannot be called
+// from the plugin: when the host has one, it embeds a text query itself and
+// sends the vector along with the text.
+message VectorQuery {
+  repeated float vector = 1;
+  string text = 2;
+  string field = 3;
+  int64 k = 4;
+  Filter filter = 5;
+  // driver.VectorMetric: "", "l2", "cosine", "ip".
+  string metric = 6;
+}
+
+message SimilarRequest {
+  ConnHandle conn = 1;
+  CollectionRef ref = 2;
+  VectorQuery query = 3;
+}
+
+// ----------------------------------------------------- time series reader --
+
+// RangeQuery is driver.RangeQuery. An unset bound is open (the zero time).
+message RangeQuery {
+  string field = 1;
+  Time start = 2;
+  Time end = 3;
+  google.protobuf.Duration window = 4;
+  string aggregate = 5;
+  repeated string group_by = 6;
+  Filter filter = 7;
+}
+
+message RangeRequest {
+  ConnHandle conn = 1;
+  CollectionRef ref = 2;
+  RangeQuery query = 3;
+}
+
+// ---------------------------------------------------------- graph reader --
+
+// GraphQuery is driver.GraphQuery.
+message GraphQuery {
+  Value start = 1;
+  repeated string labels = 2;
+  int64 depth = 3;
+  int64 limit = 4;
+}
+
+// Node is driver.Node.
+message Node {
+  string id = 1;
+  repeated string labels = 2;
+  Object props = 3;
+}
+
+// Edge is driver.Edge.
+message Edge {
+  string id = 1;
+  string from = 2;
+  string to = 3;
+  string type = 4;
+  Object props = 5;
+}
+
+// Graph is driver.Graph.
+message Graph {
+  repeated Node nodes = 1;
+  repeated Edge edges = 2;
+}
+
+message NeighborsRequest {
+  ConnHandle conn = 1;
+  GraphQuery query = 2;
+}
+
+message NeighborsResponse {
+  Graph graph = 1;
+}
+
+// -------------------------------------------------------------- exporter --
+
+message ExportRequest {
+  ConnHandle conn = 1;
+  Query query = 2;
+  string format = 3;
+}
+
+// ExportChunk is the next slice of the export's bytes.
+message ExportChunk {
+  bytes data = 1;
+}
+
+// --------------------------------------------------------------- watcher --
+
+message WatchRequest {
+  ConnHandle conn = 1;
+  // Unset when watching a channel.
+  CollectionRef collection = 2;
+  string channel = 3;
+}
+
+// Event is driver.Event.
+message Event {
+  Time time = 1;
+  string op = 2;
+  string channel = 3;
+  Object key = 4;
+  Value payload = 5;
+  // Set on the terminal event: driver.Event.Err.
+  ErrorInfo error = 6;
+}

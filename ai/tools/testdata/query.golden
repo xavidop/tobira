@@ -1,0 +1,59 @@
+{
+  "columns": [
+    {
+      "name": "id",
+      "type": "int"
+    },
+    {
+      "name": "name",
+      "type": "string"
+    },
+    {
+      "name": "email",
+      "type": "string"
+    },
+    {
+      "name": "age",
+      "type": "int"
+    },
+    {
+      "name": "score",
+      "type": "decimal"
+    },
+    {
+      "name": "active",
+      "type": "bool"
+    },
+    {
+      "name": "created_at",
+      "type": "time"
+    },
+    {
+      "name": "tags",
+      "type": "json"
+    }
+  ],
+  "rows": [
+    [
+      1,
+      "Ōtani Shōhei",
+      "user01@example.com",
+      21,
+      12.50,
+      true,
+      "2026-01-02T03:04:05Z",
+      "[\"admin\",\"beta\"]"
+    ],
+    [
+      2,
+      "Conan O'Brien",
+      "user02@example.com",
+      22,
+      74.26,
+      true,
+      "2026-01-03T05:04:05Z",
+      "[\"beta\"]"
+    ]
+  ],
+  "truncated": true
+}

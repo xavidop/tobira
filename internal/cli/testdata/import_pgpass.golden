@@ -1,0 +1,10 @@
++ add    db.example.test-orders (postgres) postgres://alice@db.example.test:5432/orders; password: skipped (no terminal to ask; pass --keyring-yes to store it)
+~ rename db.example.test-orders -> db.example.test-orders-imported (postgres) postgres://audit@db.example.test:5432/orders; password: skipped (no terminal to ask; pass --keyring-yes to store it)
++ add    1-we-ird (from "::1-we\\ird") (postgres) postgres://bob@[::1]:5433/we%5Cird; password: skipped (no terminal to ask; pass --keyring-yes to store it)
+- skip   line 6: wildcard (*) in hostname and database: it matches many servers, not one connection
+- skip   line 7: malformed line: want hostname:port:database:username:password
++ add    replica.example.test-analytics (postgres) postgres://dave@replica.example.test/analytics
+- skip   line 9: malformed line: want hostname:port:database:username:password
++ add    localhost-local-pg (postgres) postgres://eve@localhost:5432/local-pg; password: skipped (no terminal to ask; pass --keyring-yes to store it)
+5 to add (1 renamed), 3 skipped
+dry run: nothing written. Re-run with --apply to write.

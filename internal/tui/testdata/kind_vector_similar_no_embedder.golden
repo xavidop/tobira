@@ -1,0 +1,30 @@
+connections                 │local ▸ similar to "a red bicycle"                                     
+▾ ● local                   │ vecs   1:similar to "a red bicycle" ✗                                 
+  ▾ main                    │fake: similar: text similarity needs ai.embedder: not supported        
+      tobira_people         │                                                                       
+      docs                  │                                                                       
+      kv                    │                                                                       
+      vecs                  │                                                                       
+      cpu                   │                                                                       
+      pages                 │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+… "a red bicycle"  fake: similar: text similarity needs ai.embedder: not supported f1 help  : cmd  ●

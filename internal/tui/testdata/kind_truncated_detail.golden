@@ -1,0 +1,30 @@
+connections                 │local ▸ main ▸ notes · row detail                                      
+▾ ● local                   │id         │ 2                                                         
+  ▾ main                    │body       │ the first 4 KiB…                                          
+      tobira_people         │_truncated │ true                                                      
+      docs                  │                                                                       
+      kv                    │                                                                       
+      vecs                  │                                                                       
+      cpu                   │                                                                       
+      pages                 │                                                                       
+      notes                 │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+… main › notes  value truncated in preview; edit it with a query f1 help  : cmd  f filter  q quit  ●

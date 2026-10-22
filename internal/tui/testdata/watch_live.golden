@@ -1,0 +1,30 @@
+connections                 │local ▸ watch tobira_people · live · 3 events                          
+▾ ● local                   │ tobira_people   1:watch tobira… live                                  
+  ▾ main                    │TIME         OP       KEY            PAYLOAD                           
+      tobira_people         │09:30:03.000 delete   3              {name: "person 3"}                
+▸ ● ro                      │09:30:02.000 update   2              {name: "person 2"}                
+                            │09:30:01.000 insert   1              {name: "person 1"}                
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+local › 1:watch tobira…  row 1 of 3                              f1 help  : cmd  f filter  q quit  ●

@@ -1,0 +1,21 @@
+connections:
+  - name: local-pg
+    driver: postgres
+    dsn: postgres://app@localhost:5432/app
+    password: env:PG_PW
+    tags: [dev]
+  - name: vault-db
+    driver: mysql
+    dsn: mysql://svc@mysql.example.test:3306/svc
+    password: op://Fixtures/svc/password
+    color: blue
+    read_only: true
+    options:
+      tls: preferred
+  - name: has-literal
+    driver: postgres
+    dsn: postgres://u@h/db
+    password: Fx-S3cret-Pw-42
+  - name: has spaces
+    driver: sqlite
+    dsn: sqlite:./spaces.db

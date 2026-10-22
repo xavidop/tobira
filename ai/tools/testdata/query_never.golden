@@ -1,0 +1,19 @@
+{
+  "columns": [
+    {
+      "name": "id",
+      "type": "int"
+    },
+    {
+      "name": "person_id",
+      "type": "int"
+    },
+    {
+      "name": "status",
+      "type": "text"
+    }
+  ],
+  "truncated": false,
+  "rows_withheld": 2,
+  "note": "rows withheld by policy (ai.send_rows: never)"
+}

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 200" role="img" aria-label="扉 tobira wordmark">
+  <rect width="720" height="200" rx="28" fill="#0B1220"/>
+  <g transform="translate(36 28) scale(0.5625)">
+    <g fill="#E8ECF4">
+      <rect x="52" y="30" width="152" height="10" rx="3" opacity=".55"/>
+      <rect x="44" y="48" width="168" height="18" rx="4"/>
+      <rect x="60" y="64" width="18" height="142" rx="4"/>
+      <rect x="178" y="64" width="18" height="142" rx="4"/>
+    </g>
+    <g fill="none" stroke="#5EEAD4" stroke-width="10" stroke-linecap="round">
+      <ellipse cx="128" cy="100" rx="34" ry="12"/>
+      <path d="M94 100v60c0 6.6 15.2 12 34 12s34-5.4 34-12v-60"/>
+      <path d="M94 130c0 6.6 15.2 12 34 12s34-5.4 34-12"/>
+    </g>
+    <rect x="106" y="214" width="44" height="8" rx="2" fill="#5EEAD4"/>
+  </g>
+  <text x="200" y="118" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="84" font-weight="700" fill="#E8ECF4">
+    <tspan fill="#5EEAD4">扉</tspan><tspan dx="18">tobira</tspan>
+  </text>
+  <text x="204" y="160" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="22" fill="#94A3B8">every database, one terminal</text>
+</svg>

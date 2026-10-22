@@ -1,0 +1,215 @@
+version: 2
+updates:
+  # Root module (core, driver contract, internal/*)
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      go-dependencies:
+        patterns: ["*"]
+    labels: [dependencies, go]
+
+  # CLI module (own go.mod; the only module that will pull database SDKs)
+  - package-ecosystem: gomod
+    directory: "/cmd/tobira"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, cli]
+
+  # AI assistant (own go.mod; Genkit, whose go.mod requires database SDKs)
+  - package-ecosystem: gomod
+    directory: "/ai"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, ai]
+
+  # SQLite driver (own go.mod; pure-Go modernc.org/sqlite)
+  - package-ecosystem: gomod
+    directory: "/drivers/sqlite"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # Postgres driver (own go.mod; pgx)
+  - package-ecosystem: gomod
+    directory: "/drivers/postgres"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # MySQL driver (own go.mod; go-sql-driver/mysql)
+  - package-ecosystem: gomod
+    directory: "/drivers/mysql"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # MongoDB driver (own go.mod; mongo-driver v2)
+  - package-ecosystem: gomod
+    directory: "/drivers/mongodb"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # Redis driver (own go.mod; go-redis)
+  - package-ecosystem: gomod
+    directory: "/drivers/redis"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # ClickHouse driver (own go.mod; ClickHouse/clickhouse-go)
+  - package-ecosystem: gomod
+    directory: "/drivers/clickhouse"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # Qdrant driver (own go.mod; qdrant/go-client over gRPC)
+  - package-ecosystem: gomod
+    directory: "/drivers/qdrant"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # InfluxDB 3 driver (own go.mod; influxdb3-go, Arrow Flight)
+  - package-ecosystem: gomod
+    directory: "/drivers/influxdb"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # SQL Server driver (own go.mod; go-mssqldb)
+  - package-ecosystem: gomod
+    directory: "/drivers/mssql"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # Cassandra driver (own go.mod; Apache gocql v2)
+  - package-ecosystem: gomod
+    directory: "/drivers/cassandra"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # Oracle driver (own go.mod; sijms/go-ora)
+  - package-ecosystem: gomod
+    directory: "/drivers/oracle"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # libSQL driver (own go.mod; stdlib Hrana client, testcontainers for tests)
+  - package-ecosystem: gomod
+    directory: "/drivers/libsql"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # Cloudflare D1 driver (own go.mod; stdlib REST client, modernc.org/sqlite in tests only)
+  - package-ecosystem: gomod
+    directory: "/drivers/d1"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # Snowflake driver (own go.mod; github.com/snowflakedb/gosnowflake/v2)
+  - package-ecosystem: gomod
+    directory: "/drivers/snowflake"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # Firestore driver (own go.mod; cloud.google.com/go/firestore)
+  - package-ecosystem: gomod
+    directory: "/drivers/firestore"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # Pinecone driver (own go.mod; go-pinecone v7, REST control plane + gRPC data plane)
+  - package-ecosystem: gomod
+    directory: "/drivers/pinecone"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # Cosmos DB driver (own go.mod; github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos)
+  - package-ecosystem: gomod
+    directory: "/drivers/cosmos"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # Weaviate driver (own go.mod; weaviate-go-client v5)
+  - package-ecosystem: gomod
+    directory: "/drivers/weaviate"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # Chroma driver (own go.mod; typed net/http client for the v2 REST API, no SDK)
+  - package-ecosystem: gomod
+    directory: "/drivers/chroma"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # Elasticsearch/OpenSearch driver (own go.mod; go-elasticsearch v8)
+  - package-ecosystem: gomod
+    directory: "/drivers/elasticsearch"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # BigQuery driver (own go.mod; cloud.google.com/go/bigquery)
+  - package-ecosystem: gomod
+    directory: "/drivers/bigquery"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # DynamoDB driver (own go.mod; aws-sdk-go-v2)
+  - package-ecosystem: gomod
+    directory: "/drivers/dynamodb"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # DuckDB driver plugin (own go.mod; cgo, built by its own goreleaser config)
+  - package-ecosystem: gomod
+    directory: "/drivers/duckdb"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # Vertica driver (own go.mod; vertica-sql-go, testcontainers for tests)
+  - package-ecosystem: gomod
+    directory: "/drivers/vertica"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # Milvus driver (own go.mod; milvus client/v2 column+entity, milvus-proto gRPC)
+  - package-ecosystem: gomod
+    directory: "/drivers/milvus"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
+  # Example custom driver (own go.mod; documentation, tested with drivertest)
+  - package-ecosystem: gomod
+    directory: "/examples/custom-driver-module"
+    schedule: { interval: weekly }
+    labels: [dependencies, go]
+
+  # Example driver plugin (own go.mod; the plugin SDK, tested through the plugin host)
+  - package-ecosystem: gomod
+    directory: "/examples/custom-driver-plugin"
+    schedule: { interval: weekly }
+    labels: [dependencies, go]
+
+  # Example embedding (own go.mod; the api package and drivers/sqlite used as a library)
+  - package-ecosystem: gomod
+    directory: "/examples/embedding"
+    schedule: { interval: weekly }
+    labels: [dependencies, go]
+
+  # Example MCP client (own go.mod; mcp-go, tested against a real tobira binary)
+  - package-ecosystem: gomod
+    directory: "/examples/mcp-client"
+    schedule: { interval: weekly }
+    labels: [dependencies, go]
+
+  # Plugin SDK (own go.mod; hashicorp/go-plugin and gRPC, imported by external driver plugins)
+  - package-ecosystem: gomod
+    directory: "/plugin/sdk"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, plugin]
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule: { interval: weekly }
+    labels: [dependencies, ci]
+
+  # Docs site (npm)
+  - package-ecosystem: npm
+    directory: "/site"
+    schedule: { interval: weekly }
+    labels: [dependencies, docs]

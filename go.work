@@ -1,0 +1,37 @@
+go 1.26.9
+
+use (
+	.
+	./ai
+	./cmd/tobira
+	./drivers/bigquery
+	./drivers/cassandra
+	./drivers/chroma
+	./drivers/clickhouse
+	./drivers/cosmos
+	./drivers/d1
+	./drivers/duckdb
+	./drivers/dynamodb
+	./drivers/elasticsearch
+	./drivers/firestore
+	./drivers/influxdb
+	./drivers/libsql
+	./drivers/milvus
+	./drivers/mongodb
+	./drivers/mssql
+	./drivers/mysql
+	./drivers/oracle
+	./drivers/pinecone
+	./drivers/postgres
+	./drivers/qdrant
+	./drivers/redis
+	./drivers/snowflake
+	./drivers/sqlite
+	./drivers/vertica
+	./drivers/weaviate
+	./examples/custom-driver-module
+	./examples/custom-driver-plugin
+	./examples/embedding
+	./examples/mcp-client
+	./plugin/sdk
+)

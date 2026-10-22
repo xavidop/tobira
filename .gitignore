@@ -1,0 +1,45 @@
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.txt
+coverage.out
+coverage.html
+/dist/
+bin/
+vendor/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Node / Astro (site/)
+node_modules/
+site/dist/
+site/.astro/
+.env
+.env.*
+!.env.example
+
+# Playwright / screenshots
+.playwright-mcp/
+*.screenshot.png
+
+# Binaries from a plain `go build` in the repo root or cmd/tobira.
+/cmd/tobira/tobira
+/tobira
+# Agent scratch: SDD ledgers, briefs, reports. Never part of a deliverable.
+.superpowers/
+
+# Agent worktrees. Each is a full checkout with its own .git, so an unqualified
+# `git add -A` from the repo root otherwise stages them as embedded repositories.
+.claude/worktrees/
+
+# Genkit dev-mode traces (tobira ai dev)
+.genkit/

@@ -1,0 +1,110 @@
+name: Release DuckDB plugin
+
+# Publishes the tobira-driver-duckdb plugin to the GitHub release of a
+# drivers/duckdb/vX.Y.Z tag. tobira's own release (release.yml) never builds
+# the plugin, and this workflow never builds tobira.
+#
+# DuckDB needs cgo, so each platform builds on a native runner with the
+# plugin's .goreleaser.yaml (goreleaser build --single-target). GoReleaser
+# cannot parse a drivers/duckdb/ tag as a version, so the build gets the bare
+# version through GORELEASER_CURRENT_TAG and --skip=validate. The publish job
+# names each binary tobira-driver-duckdb_<version>_<os>_<arch> (.exe on
+# Windows), writes tobira-driver-duckdb_<version>_checksums.txt, and uploads
+# them to the release, which it creates when the tag has none. That release
+# is never marked latest, so tobira's own latest release stays the latest.
+
+on:
+  push:
+    tags: ["drivers/duckdb/v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build ${{ matrix.goos }}/${{ matrix.goarch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { os: ubuntu-24.04, goos: linux, goarch: amd64 }
+          - { os: ubuntu-24.04-arm, goos: linux, goarch: arm64 }
+          - { os: macos-15-intel, goos: darwin, goarch: amd64 }
+          - { os: macos-latest, goos: darwin, goarch: arm64 }
+          - { os: windows-latest, goos: windows, goarch: amd64 }
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/duckdb/go.mod
+          cache-dependency-path: drivers/duckdb/go.sum
+      - name: Version from the tag
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#drivers/duckdb/v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "tag $GITHUB_REF_NAME is not drivers/duckdb/vX.Y.Z" >&2
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - name: goreleaser build (native, cgo)
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: "v2.18.3"
+          workdir: drivers/duckdb
+          args: build --single-target --clean --skip=validate
+        env:
+          GORELEASER_CURRENT_TAG: v${{ env.VERSION }}
+      - name: Name the binary for the release
+        shell: bash
+        run: |
+          ext=""
+          if [ "${{ matrix.goos }}" = windows ]; then ext=".exe"; fi
+          bin=$(find drivers/duckdb/dist -type f -name "tobira-driver-duckdb${ext}" | head -n 1)
+          test -n "$bin"
+          mkdir -p out
+          cp "$bin" "out/tobira-driver-duckdb_${VERSION}_${{ matrix.goos }}_${{ matrix.goarch }}${ext}"
+          ls -l out
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tobira-driver-duckdb-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: out/*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: publish
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release and upload its assets
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: tobira-driver-duckdb-*
+          merge-multiple: true
+          path: out
+      - name: Checksums
+        working-directory: out
+        run: |
+          version="${TAG#drivers/duckdb/v}"
+          sha256sum tobira-driver-duckdb_* > "tobira-driver-duckdb_${version}_checksums.txt"
+          cat "tobira-driver-duckdb_${version}_checksums.txt"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - name: Create the release when the tag has none
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --verify-tag --latest=false \
+              --title "tobira-driver-duckdb $VERSION" \
+              --notes "The DuckDB driver plugin for tobira. Install the binary for your platform with \`tobira driver install <url> --sha256 <hex> --name duckdb\`, taking the hex from tobira-driver-duckdb_${VERSION}_checksums.txt. See https://xavidop.github.io/tobira/docs/drivers/duckdb/#install."
+          fi
+      - name: Upload the binaries and checksums
+        run: gh release upload "$TAG" out/* --clobber

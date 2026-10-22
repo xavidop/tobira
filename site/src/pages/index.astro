@@ -1,0 +1,267 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+const base = import.meta.env.BASE_URL;
+const repo = "https://github.com/xavidop/tobira";
+
+// Bodies are trusted, static HTML so commands can render as <code>.
+const pillars = [
+  {
+    tag: "terminal",
+    title: "One terminal",
+    body: "A single static Go binary. Browse schemas, run queries and edit rows without leaving the terminal.",
+  },
+  {
+    tag: "drivers",
+    title: "Every database",
+    body: "Thirty drivers behind one interface, with the same keys and commands on all of them. Add your own as a plugin.",
+  },
+  {
+    tag: "safety",
+    title: "Safe by default",
+    body: "Read-only connections refuse every write. Passwords stay out of the config file, in env vars or the OS keyring.",
+  },
+  {
+    tag: "ai",
+    title: "AI ready",
+    body: "Ask in plain language with <code>tobira ask</code>, on Gemini, OpenAI, Anthropic or Ollama. <code>tobira mcp</code> serves your connections to agents.",
+  },
+  {
+    tag: "ci",
+    title: "Built for CI",
+    body: "<code>tobira query</code> prints JSON, NDJSON or CSV with clear exit codes, and <code>tobira doctor</code> checks your setup in a pipeline.",
+  },
+  {
+    tag: "live",
+    title: "Live changes",
+    body: "<code>tobira watch</code> streams change events from PostgreSQL, MongoDB, Redis and more, in the terminal UI or to stdout.",
+  },
+];
+---
+
+<Layout>
+  <section class="hero section">
+    <div class="wrap hero__grid">
+      <div class="hero__inner">
+        <img class="hero__logo" src={`${base}brand/tobira-logo.svg`} alt="" width="96" height="96" />
+        <p class="eyebrow">扉 tobira, the door</p>
+        <h1>Every database, one terminal.</h1>
+        <p class="hero__lede">
+          Browse, query and edit thirty databases from one terminal app. The same keys and commands
+          work on all of them, and a read-only guard keeps production safe.
+        </p>
+        <div class="hero__actions">
+          <a class="btn btn--primary" href={`${base}docs/install/`}>Install</a>
+          <a class="btn btn--ghost" href={`${base}docs/`}>Read the docs</a>
+          <a class="btn btn--ghost" href={repo} target="_blank" rel="noopener">View on GitHub</a>
+        </div>
+        <p class="hero__install"><code>brew install xavidop/tap/tobira</code></p>
+        <p class="hero__note">Homebrew is macOS only; on Linux and Windows, use a release binary.</p>
+        <p class="hero__status">
+          Thirty databases, from SQLite, PostgreSQL and MySQL to MongoDB, Redis, Snowflake and vector
+          stores, in one terminal UI. <code>tobira ask</code> answers questions about them,
+          <code>tobira mcp</code> serves them to agents, and <code>tobira doctor</code> checks the
+          setup. See the <a href={`${base}docs/drivers/`}>drivers</a>.
+        </p>
+      </div>
+      <figure class="window">
+        <div class="window__bar" aria-hidden="true">
+          <span class="window__dot"></span>
+          <span class="window__dot"></span>
+          <span class="window__dot"></span>
+          <span class="window__title">tobira connect shop</span>
+        </div>
+        <img
+          class="demo__gif"
+          src={`${base}demo.gif`}
+          alt="tobira browsing, filtering, running a query and editing a row"
+          width="1100"
+          height="640"
+        />
+      </figure>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section__head">
+        <p class="eyebrow">Why tobira</p>
+        <h2>One tool for every database</h2>
+      </div>
+      <div class="pillars">
+        {pillars.map((p) => (
+          <div class="card pillar">
+            <p class="pillar__tag">{p.tag}</p>
+            <h3>{p.title}</h3>
+            <p set:html={p.body} />
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .hero {
+    padding-block: clamp(3.5rem, 8vw, 6.5rem) 2rem;
+  }
+  /* Text on the left, the demo on the right; stacked below 1080px. */
+  .hero__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: clamp(2rem, 4vw, 3.5rem);
+    align-items: center;
+  }
+  @media (max-width: 1080px) {
+    .hero__grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  .hero__inner {
+    max-width: 760px;
+  }
+  .hero__logo {
+    display: block;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 1.2rem;
+    border-radius: 16px;
+  }
+  /* Sized for half the page, so the title takes two lines beside the demo. */
+  .hero h1 {
+    font-size: clamp(2.5rem, 1.6rem + 2.4vw, 3.7rem);
+    line-height: 1.04;
+    margin: 0.4rem 0 1.2rem;
+  }
+  .hero__lede {
+    color: var(--muted);
+    font-size: var(--step-1);
+    max-width: 52ch;
+    margin: 0 0 1.8rem;
+  }
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin-bottom: 1.6rem;
+  }
+  .hero__install {
+    margin: 0 0 1.2rem;
+  }
+  .hero__install code {
+    display: inline-block;
+    padding: 0.7rem 1.1rem;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    background: var(--code-bg);
+    font-size: 0.95rem;
+  }
+  .hero__note {
+    color: var(--muted);
+    font-size: var(--step--1);
+    margin: -0.6rem 0 1.2rem;
+  }
+  .hero__status {
+    max-width: 62ch;
+    color: var(--muted);
+    font-size: var(--step--1);
+  }
+  .hero__status code {
+    padding: 0.1rem 0.4rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg-3);
+    color: var(--rail-deep);
+  }
+  .hero__status a {
+    color: var(--rail-deep);
+    text-decoration: underline;
+    text-decoration-color: var(--rail);
+    text-underline-offset: 3px;
+  }
+  /* The demo sits in a terminal window frame. The bar matches the
+     recording's Catppuccin Mocha theme, in light and dark mode alike. */
+  .window {
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    background: #1e1e2e;
+    box-shadow: 0 24px 48px -16px rgba(var(--shadow), 0.35);
+  }
+  .window__bar {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.65rem 0.9rem;
+    background: #181825;
+    border-bottom: 1px solid #313244;
+  }
+  .window__dot {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+    background: #f38ba8;
+  }
+  .window__dot:nth-child(2) {
+    background: #f9e2af;
+  }
+  .window__dot:nth-child(3) {
+    background: #a6e3a1;
+  }
+  .window__title {
+    flex: 1;
+    margin-right: 2.4rem;
+    color: #a6adc8;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.78rem;
+    text-align: center;
+  }
+  .demo__gif {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  /* Six cards: three columns, then two, then one, so no row is left with a
+     single card. */
+  .pillars {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.2rem;
+  }
+  @media (max-width: 960px) {
+    .pillars {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 600px) {
+    .pillars {
+      grid-template-columns: 1fr;
+    }
+  }
+  .pillar h3 {
+    font-size: var(--step-1);
+    margin: 0 0 0.5rem;
+  }
+  .pillar p {
+    color: var(--muted);
+    margin: 0;
+  }
+  .pillar .pillar__tag {
+    margin: 0 0 0.9rem;
+    color: var(--rail-deep);
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: var(--step--1);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .pillar :global(code) {
+    padding: 0.05rem 0.35rem;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg-3);
+    color: var(--rail-deep);
+    font-size: 0.88em;
+    white-space: nowrap;
+  }
+</style>

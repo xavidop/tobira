@@ -1,0 +1,25 @@
+connections:
+  - name: local-pg
+    driver: postgres
+    dsn: postgres://app@localhost:5432/app
+    password: "op://dev/postgres/password"      # any mamori secret ref: env:, file://, aws-sm://, vault://, op://…
+    color: blue                                  # tab/tag colour in the TUI
+    read_only: true                              # hard guard: Mutator and write queries refused
+    tags: [prod]
+  - name: cache
+    driver: redis
+    dsn: redis://localhost:6379/0
+ai:
+  provider: googleai            # googleai | anthropic | openai | ollama | vertexai (Genkit plugins)
+  model: gemini-2.5-flash
+  embedder: googleai/text-embedding-004   # used by VectorSearcher drivers when a text query is given
+  send_sample_rows: false       # schema is always sent; row samples only if explicitly enabled
+mcp:
+  expose: [local-pg, cache]     # which connections the MCP server publishes
+  allow_writes: []              # connection names where `execute` (write) tool is enabled
+  max_rows: 200
+tui:
+  theme: tobira-dark
+  keymap: default               # default | vim
+history:
+  path: ~/.local/state/tobira/history.db

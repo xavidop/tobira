@@ -1,0 +1,5 @@
+# buf workspace for the plugin protocol. Generate with `make proto`; the
+# generated Go code under plugin/proto is committed.
+version: v2
+modules:
+  - path: plugin/proto

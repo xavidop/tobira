@@ -1,0 +1,130 @@
+name: Release
+
+# Releases are driven by Conventional Commits:
+#   0. A snapshot of the tobira CLI is built and smoke-tested (`tobira
+#      version`) before anything is tagged.
+#   1. semantic-release analyzes commits on main, decides the next version,
+#      updates CHANGELOG.md, and creates + pushes the git tag (vX.Y.Z).
+#   2. GoReleaser builds the tobira CLI binary and creates the GitHub Release
+#      with the artifacts, checksums, and SBOM for that tag.
+#   3. SLSA provenance is generated for the released artifacts.
+#
+# The root module is consumed via `go get` at the tag; the CLI module
+# (cmd/tobira) is built by GoReleaser.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write # create tags, releases, and commit the changelog
+  issues: write # semantic-release success comments
+  pull-requests: write
+  id-token: write # SLSA / keyless signing
+
+jobs:
+  release:
+    name: Version & build
+    runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.semantic.outputs.new_release_published }}
+      version: ${{ steps.semantic.outputs.new_release_version }}
+      tag: ${{ steps.semantic.outputs.new_release_git_tag }}
+      hashes: ${{ steps.hashes.outputs.hashes }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history so semantic-release can analyze commits
+          persist-credentials: true
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: cmd/tobira/go.mod
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Install Syft (SBOM)
+        uses: anchore/sbom-action/download-syft@v0
+
+      # 0. Smoke-test a snapshot build for this runner BEFORE semantic-release
+      #    runs. semantic-release pushes the vX.Y.Z tag and the CHANGELOG
+      #    commit as soon as it runs, so a binary that does not start must
+      #    stop the job here, while nothing has been tagged or published yet.
+      #    (Casks have no test block, so this is the only check that the
+      #    released binary runs.) It runs on every push to main, release or
+      #    not, which also catches a broken main early.
+      - name: Build a snapshot for the smoke test
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: "v2.18.3"
+          args: build --snapshot --clean --single-target
+
+      - name: Smoke-test the snapshot binary
+        run: |
+          bin=$(find dist -type f -name tobira | head -n 1)
+          test -n "$bin"
+          "$bin" version
+
+      # 1. Determine the next version, update CHANGELOG.md, create and push the tag.
+      - name: Semantic Release
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v6
+        with:
+          semantic_version: 24
+          extra_plugins: |
+            @semantic-release/changelog@6
+            @semantic-release/git@10
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Build and publish the GitHub Release for the tag semantic-release created.
+      #
+      # GoReleaser is pinned: .goreleaser.yaml uses the cask hooks.post.install
+      # key, which v2.19 deprecates in favour of install_steps (not parsed by
+      # 2.18). Move both together when bumping.
+      - name: Run GoReleaser
+        if: steps.semantic.outputs.new_release_published == 'true'
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: "v2.18.3"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The Homebrew cask is committed to xavidop/homebrew-tap, a
+          # different repository, which GITHUB_TOKEN cannot write to (it is
+          # scoped to this repo, so GoReleaser gets 403 "Resource not
+          # accessible by integration"). HOMEBREW_TAP_TOKEN must be a PAT (or
+          # GitHub App token) with contents:write on the tap repo.
+          #
+          # The fallback keeps the variable always defined: .goreleaser.yaml
+          # interpolates {{ .Env.HOMEBREW_TAP_TOKEN }}, and an undefined env
+          # var there is a template error that would fail the ENTIRE release,
+          # including artifacts that are otherwise fine. With the fallback, a
+          # missing secret degrades to exactly today's behaviour instead.
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN || secrets.GITHUB_TOKEN }}
+
+      # 3. Export the artifact hashes for the provenance job.
+      - name: Export artifact hashes
+        id: hashes
+        if: steps.semantic.outputs.new_release_published == 'true'
+        run: echo "hashes=$(base64 -w0 < dist/checksums.txt)" >> "$GITHUB_OUTPUT"
+
+  provenance:
+    name: SLSA provenance
+    needs: release
+    if: needs.release.outputs.published == 'true'
+    permissions:
+      actions: read
+      id-token: write
+      contents: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    with:
+      base64-subjects: ${{ needs.release.outputs.hashes }}
+      upload-assets: true
+      upload-tag-name: ${{ needs.release.outputs.tag }}
+      provenance-name: tobira.intoto.jsonl

@@ -1,0 +1,16 @@
+{
+  "collections": [
+    {
+      "namespace": "main",
+      "name": "tobira_people",
+      "type": "table",
+      "row_estimate": 57
+    },
+    {
+      "namespace": "main",
+      "name": "orders",
+      "type": "table",
+      "row_estimate": 2
+    }
+  ]
+}

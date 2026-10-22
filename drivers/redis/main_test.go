@@ -1,0 +1,11 @@
+//go:build !integration
+
+package redis
+
+import (
+	"testing"
+
+	"go.uber.org/goleak"
+)
+
+func TestMain(m *testing.M) { goleak.VerifyTestMain(m) }

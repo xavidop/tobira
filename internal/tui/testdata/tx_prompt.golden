@@ -1,0 +1,30 @@
+connections                 │open transaction                                                       
+▸ ● local                   │transaction open on local: [c]ommit · [r]ollback · cancel              
+▸ ● ro                      │quitting ends it                                                       
+                            │                                                                       
+                            │c commits · r rolls back · any other key cancels                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+local › main › tobira_people  transaction open on local       f1 help  : cmd  f filter  q quit  TX ●

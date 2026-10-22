@@ -1,0 +1,30 @@
+connections                 │local ▸ main ▸ tobira_people · row detail                              
+▾ ● local                   │id         │ 1                                                         
+  ▾ main                    │name       │ Ōtani Shōhei                                              
+      tobira_people         │email      │ user01@example.com                                        
+▸ ● ro                      │age        │ 21                                                        
+                            │score      │ 12.50                                                     
+                            │active     │ true                                                      
+                            │created_at │ 2026-01-02T03:04:05Z                                      
+                            │tags       │ ▸ [2 items]                                               
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+local › main › tobira_people  row 1 of 57  T                  f1 help  : cmd  f filter  q quit  ●

@@ -1,0 +1,17 @@
+dialect: fake
+kind: other
+namespace: main
+collections:
+  - name: main.orders
+    role: in scope
+    type: table
+    rows: 1
+    fields:
+      - id int pk auto
+      - person_id int
+      - status text default 'open'
+    indexes:
+      - orders_status(status)
+    foreign_keys:
+      - person_id -> main.tobira_people(id)
+other_collections: 12 not shown

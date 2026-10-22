@@ -1,0 +1,30 @@
+connections                 │local ▸ main ▸ pages · row detail                                      
+▾ ● local                   │_id     │ d4                                                           
+  ▾ main                    │name    │ NULL                                                         
+      tobira_people         │age     │ 41                                                           
+      docs                  │address │ NULL                                                         
+      kv                    │tags    │ NULL                                                         
+      vecs                  │active  │ NULL                                                         
+      cpu                   │scores  │ NULL                                                         
+      pages                 │nested  │ ▾ {1 key}                                                    
+                            │        │ ▾ deep: {1 key}                                              
+                            │        │   ▾ deeper: {1 key}                                          
+                            │        │       value: 1                                               
+                            │title   │ NULL                                                         
+                            │extra   │ —                                                            
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+                            │                                                                       
+local › main › pages  row 4 of 210  T                         f1 help  : cmd  f filter  q quit  ●

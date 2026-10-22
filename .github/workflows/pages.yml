@@ -1,0 +1,72 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment. Never cancel one in progress: a half-finished
+# Pages deploy is worse than a queued one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Astro site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v6
+      - name: Install dependencies
+        working-directory: site
+        run: npm ci || npm install
+      - name: Build
+        working-directory: site
+        # BASE_PATH is the path the project site is served under
+        # (/tobira on github.io). Astro needs it to emit correct asset URLs,
+        # and astro.config.mjs's remarkBaseLinks needs it to prefix the
+        # root-relative links written inside Markdown.
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        run: npm run build
+      - name: Check links
+        working-directory: site
+        # The SAME BASE_PATH the build used. The checker strips it before
+        # resolving an href against dist/, so omitting it here reports every
+        # link on a based build as missing, and passing a different one would
+        # check a layout nobody deploys.
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        run: npm run linkcheck
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site/dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5

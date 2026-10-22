@@ -1,0 +1,6 @@
+~ rename local-pg -> local-pg-imported (postgres) postgres://app@localhost:5432/app; password: env:PG_PW
++ add    vault-db (mysql) mysql://svc@mysql.example.test:3306/svc; password: op://Fixtures/svc/password
+- skip   has-literal: password must be a secret reference (env:NAME, file:///path, dotenv://path#KEY, keyring:NAME)
++ add    has-spaces (from "has spaces") (sqlite) sqlite:./spaces.db
+3 to add (1 renamed), 1 skipped
+dry run: nothing written. Re-run with --apply to write.

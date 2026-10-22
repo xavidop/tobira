@@ -1,0 +1,105 @@
+# GoReleaser configuration for tobira.
+#
+# The root module is a library consumed via `go get` at the git tag. GoReleaser
+# builds and releases the one shipped binary, the tobira CLI (cmd/tobira, its
+# own module), with checksums, SBOMs, a changelog and a Homebrew cask.
+version: 2
+
+project_name: tobira
+
+builds:
+  - id: tobira
+    dir: cmd/tobira
+    main: .
+    binary: tobira
+    env:
+      - CGO_ENABLED=0
+      - GOWORK=off
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    # minicore_disabled drops gosnowflake's embedded native "minicore"
+    # libraries (one per platform): the release is CGO_ENABLED=0 and could
+    # never load them, and the snowflake driver turns minicore off anyway.
+    flags:
+      - -tags=minicore_disabled
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+
+archives:
+  - id: tobira
+    ids: [tobira]
+    name_template: "tobira_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+sboms:
+  - artifacts: archive
+
+changelog:
+  use: github
+  sort: asc
+  groups:
+    - title: Drivers
+      regexp: '^.*?(feat|fix)\((sqlite|postgres|mysql|mongodb|redis|drivertest)\).+$'
+      order: 0
+    - title: Features
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 1
+    - title: Bug fixes
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 2
+    - title: Documentation
+      regexp: '^.*?docs(\(.+\))??!?:.+$'
+      order: 3
+    - title: Other
+      order: 999
+  filters:
+    exclude:
+      - "^test:"
+      - "^chore:"
+      - "merge conflict"
+      - Merge pull request
+      - Merge branch
+
+release:
+  github:
+    owner: xavidop
+    name: tobira
+  draft: false
+  prerelease: auto
+  name_template: "tobira {{ .Tag }}"
+  footer: |
+    ---
+    **Install:** `brew install xavidop/tap/tobira`
+
+    **Docs:** https://xavidop.github.io/tobira/
+
+# The tap lives in a different repository, so this block needs its own token
+# (see release.yml, which falls back to GITHUB_TOKEN when the secret is absent).
+# GoReleaser deprecated `brews` (formulas) for casks, which have no `test`
+# block: release.yml smoke-tests the built binary with `tobira version` instead.
+# The binary is unsigned, so the post-install hook clears the macOS quarantine
+# attribute. Casks install on macOS only; Linux users take the release archive.
+homebrew_casks:
+  - name: tobira
+    ids: [tobira]
+    binaries: [tobira]
+    directory: Casks
+    repository:
+      owner: xavidop
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    homepage: "https://xavidop.github.io/tobira/"
+    description: "Every database, one terminal."
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/tobira"]
+          end

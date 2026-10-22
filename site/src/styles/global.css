@@ -1,0 +1,395 @@
+/* tobira - terminal-flavoured, with the mint-teal accent (#5EEAD4) from the
+   logo. Two themes: a soft, faintly cool off-white (light) and a medium slate
+   (dark) - deliberately not near-black, so long reading stays comfortable.
+   The light theme derives a darker teal from the same accent so contrast
+   holds on near-white. Token names are stable across the codebase (--rail is
+   the accent). Status colours (muted red / amber / green, plus a slate
+   neutral) describe state in docs only and are never the site's own accents.
+
+   How the theme is chosen: the header toggle stores light, dark or system.
+   light/dark set data-theme on <html>; system removes it and the
+   prefers-color-scheme query decides. The query is guarded with
+   :not([data-theme="light"]) so an explicit light choice always wins.
+   Every text token below holds WCAG AA (>= 4.5:1) on every surface token
+   (--bg, --bg-2, --bg-3, --code-bg) in both themes. */
+
+:root {
+  /* Dark values, defined once. The two dark blocks below only map them onto
+     the live tokens, so the media query and the toggle can never drift. */
+  --d-bg: #1e2433;
+  --d-bg-2: #252c3d;
+  --d-bg-3: #2d3548;
+  --d-code-bg: #222938;
+  --d-rail: #5eead4;
+  --d-rail-hi: #7ff0de;
+  --d-rail-deep: #a7f5e9;
+  --d-rail-soft: rgba(94, 234, 212, 0.14);
+  --d-signal: #e9a59c;
+  --d-signal-soft: rgba(233, 165, 156, 0.16);
+  --d-ok: #93d0b2;
+  --d-ok-soft: rgba(147, 208, 178, 0.16);
+  --d-running: #e6c58a;
+  --d-running-soft: rgba(230, 197, 138, 0.16);
+  --d-neutral: #b5b9c8;
+  --d-neutral-soft: rgba(181, 185, 200, 0.14);
+  --d-fn: #c9a6dc;
+  --d-ink: #e8ecf3;
+  --d-muted: #aab4c5;
+  --d-muted-2: #97a3b6;
+  --d-line: rgba(232, 236, 243, 0.1);
+  --d-line-strong: rgba(232, 236, 243, 0.18);
+  --d-shadow: 8, 11, 20;
+  --d-backdrop: rgba(12, 15, 24, 0.55);
+
+  /* Light theme (the default token values) */
+  color-scheme: light;
+
+  /* Surfaces: a soft, faintly cool off-white, not stark white or warm cream */
+  --bg: #f4f8f8;
+  --bg-2: #ffffff;
+  --bg-3: #e8f0f0;
+  --code-bg: #eef4f4;
+
+  /* Primary accent: teal from the logo - calm, not saturated */
+  --rail: #0f9b8a;
+  --rail-hi: #14b3a0;
+  --rail-deep: #0b6f64;
+  --rail-soft: rgba(15, 155, 138, 0.12);
+  --on-rail: #04130f;
+
+  /* Status colours: for describing a run's state only (pills, legends,
+     docs) - never the site's own headings, borders or accents. Kept muted,
+     but dark enough to read as text on the light surfaces. */
+  --signal: #a9524a; /* failed */
+  --signal-soft: rgba(169, 82, 74, 0.12);
+  --ok: #34734f; /* passed */
+  --ok-soft: rgba(52, 115, 79, 0.12);
+  --running: #8a6420; /* running or retrying */
+  --running-soft: rgba(138, 100, 32, 0.13);
+  --neutral: #646a80; /* cached or skipped */
+  --neutral-soft: rgba(100, 106, 128, 0.12);
+  --fn: #7e5096; /* function names in hand-highlighted code */
+
+  /* Text & lines */
+  --ink: #0b1220;
+  --muted: #475569;
+  --muted-2: #5d6b7e;
+  --line: rgba(11, 18, 32, 0.08);
+  --line-strong: rgba(11, 18, 32, 0.14);
+
+  /* Shadow tint as an r, g, b triplet: rgba(var(--shadow), alpha) */
+  --shadow: 11, 18, 32;
+  --backdrop: rgba(11, 18, 32, 0.32);
+
+  --font-display: "Plus Jakarta Sans Variable", "Inter Variable", system-ui, sans-serif;
+  --font-body: "Inter Variable", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+
+  --step--1: clamp(0.82rem, 0.79rem + 0.16vw, 0.92rem);
+  --step-0: clamp(1.02rem, 0.98rem + 0.2vw, 1.14rem);
+  --step-1: clamp(1.2rem, 1.11rem + 0.44vw, 1.5rem);
+  --step-2: clamp(1.45rem, 1.28rem + 0.86vw, 1.95rem);
+  --step-3: clamp(1.85rem, 1.56rem + 1.5vw, 2.7rem);
+  --step-4: clamp(2.3rem, 1.85rem + 2.3vw, 3.8rem);
+  --step-5: clamp(2.7rem, 2.05rem + 3.3vw, 4.6rem);
+
+  --maxw: 1160px;
+  --radius: 16px;
+  --radius-sm: 12px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Dark: by system preference unless the reader chose light, or by choice.
+   Both blocks are the same mapping; keep them identical. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: var(--d-bg);
+    --bg-2: var(--d-bg-2);
+    --bg-3: var(--d-bg-3);
+    --code-bg: var(--d-code-bg);
+    --rail: var(--d-rail);
+    --rail-hi: var(--d-rail-hi);
+    --rail-deep: var(--d-rail-deep);
+    --rail-soft: var(--d-rail-soft);
+    --signal: var(--d-signal);
+    --signal-soft: var(--d-signal-soft);
+    --ok: var(--d-ok);
+    --ok-soft: var(--d-ok-soft);
+    --running: var(--d-running);
+    --running-soft: var(--d-running-soft);
+    --neutral: var(--d-neutral);
+    --neutral-soft: var(--d-neutral-soft);
+    --fn: var(--d-fn);
+    --ink: var(--d-ink);
+    --muted: var(--d-muted);
+    --muted-2: var(--d-muted-2);
+    --line: var(--d-line);
+    --line-strong: var(--d-line-strong);
+    --shadow: var(--d-shadow);
+    --backdrop: var(--d-backdrop);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: var(--d-bg);
+  --bg-2: var(--d-bg-2);
+  --bg-3: var(--d-bg-3);
+  --code-bg: var(--d-code-bg);
+  --rail: var(--d-rail);
+  --rail-hi: var(--d-rail-hi);
+  --rail-deep: var(--d-rail-deep);
+  --rail-soft: var(--d-rail-soft);
+  --signal: var(--d-signal);
+  --signal-soft: var(--d-signal-soft);
+  --ok: var(--d-ok);
+  --ok-soft: var(--d-ok-soft);
+  --running: var(--d-running);
+  --running-soft: var(--d-running-soft);
+  --neutral: var(--d-neutral);
+  --neutral-soft: var(--d-neutral-soft);
+  --fn: var(--d-fn);
+  --ink: var(--d-ink);
+  --muted: var(--d-muted);
+  --muted-2: var(--d-muted-2);
+  --line: var(--d-line);
+  --line-strong: var(--d-line-strong);
+  --shadow: var(--d-shadow);
+  --backdrop: var(--d-backdrop);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 84px;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin: 0;
+  color: var(--ink);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+p {
+  margin: 0 0 1.1rem;
+}
+
+code,
+pre {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+}
+
+.wrap {
+  width: min(100% - 2.5rem, var(--maxw));
+  margin-inline: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--rail-deep);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.eyebrow::before {
+  content: "";
+  width: 22px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--rail);
+  opacity: 0.6;
+}
+
+.section {
+  padding-block: clamp(3rem, 2.2rem + 3.4vw, 5.5rem);
+  position: relative;
+}
+.section__head {
+  max-width: 50ch;
+  margin-bottom: 3rem;
+}
+.section__head h2 {
+  font-size: var(--step-3);
+  margin-top: 0.7rem;
+}
+.section__head p {
+  color: var(--muted);
+  margin-top: 1rem;
+}
+
+/* Buttons: soft, fully rounded, gentle depth */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 500;
+  padding: 0.78rem 1.5rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  transition:
+    transform 0.25s var(--ease),
+    background 0.25s var(--ease),
+    border-color 0.25s var(--ease),
+    box-shadow 0.25s var(--ease);
+  cursor: pointer;
+}
+.btn--primary {
+  background: var(--rail);
+  color: var(--on-rail);
+  box-shadow: 0 12px 28px -14px color-mix(in srgb, var(--rail) 55%, transparent);
+}
+.btn--primary:hover {
+  transform: translateY(-1px);
+  background: var(--rail-hi);
+  box-shadow: 0 16px 34px -14px color-mix(in srgb, var(--rail) 60%, transparent);
+}
+.btn--ghost {
+  border-color: var(--line-strong);
+  color: var(--ink);
+  background: var(--bg-2);
+}
+.btn--ghost:hover {
+  border-color: var(--rail);
+  color: var(--rail-deep);
+  transform: translateY(-1px);
+}
+
+/* Cards: generous radius, a soft diffuse shadow instead of a hard border */
+.card {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.7rem;
+  box-shadow: 0 1px 2px rgba(var(--shadow), 0.03);
+  transition:
+    box-shadow 0.3s var(--ease),
+    transform 0.3s var(--ease),
+    border-color 0.3s var(--ease);
+}
+.card:hover {
+  border-color: var(--rail-soft);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 44px -28px rgba(var(--shadow), 0.35);
+}
+
+/* Code blocks */
+pre.code {
+  background: var(--code-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.3rem 1.5rem;
+  overflow-x: auto;
+  max-width: 100%;
+  line-height: 1.75;
+  margin: 0;
+  color: var(--ink);
+}
+pre.code .k {
+  color: var(--rail-deep);
+} /* keyword */
+pre.code .s {
+  color: var(--ok);
+} /* string */
+pre.code .c {
+  color: var(--muted-2);
+  font-style: italic;
+} /* comment */
+pre.code .t {
+  color: var(--rail-deep);
+} /* identifier */
+pre.code .f {
+  color: var(--fn);
+} /* function */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+  background: var(--bg-2);
+}
+.badge--ok {
+  color: var(--ok);
+  border-color: transparent;
+  background: var(--ok-soft);
+}
+
+/* Status dots: the same muted red / amber / green / slate a run's own
+   states use, reserved for exactly that - never a heading or a border. */
+.status-dot {
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  margin-right: 0.45em;
+  border-radius: 50%;
+  background: var(--neutral);
+}
+.status-dot--failed {
+  background: var(--signal);
+}
+.status-dot--running {
+  background: var(--running);
+}
+.status-dot--passed {
+  background: var(--ok);
+}
+
+:focus-visible {
+  outline: 2px solid var(--rail);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

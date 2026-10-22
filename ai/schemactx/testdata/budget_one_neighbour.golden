@@ -1,0 +1,31 @@
+dialect: fake
+kind: other
+namespace: main
+collections:
+  - name: main.orders
+    role: in scope
+    type: table
+    rows: 1
+    comment: customer orders; token xxxxx
+    fields:
+      - id int pk auto
+      - person_id int
+      - status text default 'open'  # order state open or paid
+    indexes:
+      - orders_status(status)
+    foreign_keys:
+      - person_id -> main.tobira_people(id)
+  - name: main.tobira_people
+    role: referenced by main.orders
+    type: table
+    rows: 57
+    fields:
+      - id int pk auto
+      - name string
+      - email string
+      - age int
+      - score decimal
+      - active bool
+      - created_at time
+      - tags json
+other_collections: [audit, zeta, extra_00, extra_01, extra_02, extra_03, extra_04, extra_05, extra_06, extra_07, extra_08, extra_09]

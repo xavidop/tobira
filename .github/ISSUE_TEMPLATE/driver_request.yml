@@ -1,0 +1,40 @@
+name: Driver request
+description: Request (or volunteer to build) support for a new database
+labels: [driver, triage]
+body:
+  - type: input
+    id: database
+    attributes:
+      label: Database
+      placeholder: "ClickHouse, Cassandra, DuckDB, ..."
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - SQL
+        - Document
+        - Key-value
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: sdk
+    attributes:
+      label: Go SDK / driver
+      description: Link to the Go SDK or driver module.
+  - type: input
+    id: language
+    attributes:
+      label: Native query language
+      placeholder: "SQL, MQL, Redis commands, CQL, ..."
+    validations:
+      required: true
+  - type: checkboxes
+    id: volunteer
+    attributes:
+      label: Are you volunteering to build it?
+      options:
+        - label: I'd like to implement this driver and make it pass drivertest.Run.

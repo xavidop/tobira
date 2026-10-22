@@ -1,0 +1,17 @@
+# golangci-lint v2 configuration (shared by every module in the monorepo; each
+# module dir walks up to this file). Keep this in sync with the version pinned in
+# .github/workflows/ci.yml.
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  # The standard set: errcheck, govet, ineffassign, staticcheck, unused.
+  default: standard
+
+issues:
+  # Report every finding so CI shows all issues. golangci-lint otherwise truncates
+  # silently (50 per linter, 3 of the same issue). Zero means no limit.
+  max-issues-per-linter: 0
+  max-same-issues: 0

@@ -1,0 +1,35 @@
+[
+  {
+    "name": "dev",
+    "driver": "fake",
+    "kind": "other",
+    "dialect": "fake",
+    "read_only": false,
+    "status": "ready"
+  },
+  {
+    "name": "dev2",
+    "driver": "fake",
+    "kind": "other",
+    "dialect": "fake",
+    "read_only": false,
+    "status": "idle"
+  },
+  {
+    "name": "ro",
+    "driver": "fake",
+    "kind": "other",
+    "dialect": "fake",
+    "read_only": true,
+    "status": "idle"
+  },
+  {
+    "name": "bad",
+    "driver": "",
+    "kind": "",
+    "dialect": "",
+    "read_only": false,
+    "status": "broken",
+    "error": "line 12: dsn is not a URL"
+  }
+]
