@@ -124,6 +124,18 @@ func (h *harness) send(msg tea.Msg) {
 	if rv := reflect.ValueOf(msg); rv.Kind() == reflect.String && strings.Contains(reflect.TypeOf(msg).String(), "lipboard") {
 		h.clip = append(h.clip, rv.String())
 	}
+	// A load time is measured by the wall clock, and its width ("2ms",
+	// "12ms") decides how many key hints fit in the status bar, so a frame
+	// would differ between a fast and a slow machine. Every result carries
+	// the same time instead.
+	switch m := msg.(type) {
+	case grid.PageMsg:
+		m.Took = time.Millisecond
+		msg = m
+	case runDoneMsg:
+		m.Took = time.Millisecond
+		msg = m
+	}
 	h.msgs = append(h.msgs, msg)
 	_, cmd := h.m.Update(msg)
 	h.run(cmd)
