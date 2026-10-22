@@ -167,7 +167,7 @@ func (ddbDriver) Open(ctx context.Context, cfg driver.ConnConfig) (driver.Conn, 
 		// 302 or 303 and follows it, keeping Authorization (the SigV4
 		// signature) on the same host name and forwarding
 		// X-Amz-Security-Token to any host.
-		config.WithHTTPClient(&http.Client{Transport: c.transport, CheckRedirect: netpolicy.RefuseRedirects}),
+		config.WithHTTPClient(&http.Client{Transport: closingTransport{c}, CheckRedirect: netpolicy.RefuseRedirects}),
 		config.WithLogger(logging.Nop{}),
 		config.WithClientLogMode(0),
 		config.WithLogConfigurationWarnings(false),

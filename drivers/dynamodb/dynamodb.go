@@ -3,6 +3,7 @@ package dynamodb
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"sync/atomic"
 
@@ -96,6 +97,48 @@ func (c *conn) Close() error {
 	close(c.done)
 	c.transport.CloseIdleConnections()
 	return nil
+}
+
+// closingTransport is the conn's HTTP transport. Once the conn is closed it
+// starts no request, and a request still in flight at Close releases its
+// connection when its body is closed, so no idle connection outlives the
+// conn.
+type closingTransport struct{ c *conn }
+
+func (t closingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if t.c.closed.Load() {
+		if req.Body != nil {
+			_ = req.Body.Close()
+		}
+		return nil, errClosed
+	}
+	resp, err := t.c.transport.RoundTrip(req)
+	if err != nil {
+		t.release()
+		return nil, err
+	}
+	resp.Body = &releasingBody{ReadCloser: resp.Body, release: t.release}
+	return resp, nil
+}
+
+// release drops the idle connections when the conn is already closed.
+func (t closingTransport) release() {
+	if t.c.closed.Load() {
+		t.c.transport.CloseIdleConnections()
+	}
+}
+
+// releasingBody calls release after the body is closed, once the transport
+// has put its connection back in the idle pool.
+type releasingBody struct {
+	io.ReadCloser
+	release func()
+}
+
+func (b *releasingBody) Close() error {
+	err := b.ReadCloser.Close()
+	b.release()
+	return err
 }
 
 func (c *conn) writable(op string) error {
