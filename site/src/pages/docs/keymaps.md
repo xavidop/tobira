@@ -28,7 +28,7 @@ The TUI has two keymaps, chosen with `tui.keymap` in the [config file](/docs/con
 
 | Action | Default | Vim |
 | --- | --- | --- |
-| next pane | `tab` | `tab` |
+| next pane (sidebar, grid, editor, AI panel) | `tab` | `tab` |
 | previous pane | `shift+tab` | `shift+tab` |
 | open / row detail | `enter` | `enter` |
 | back / close; in the grid, focus the sidebar | `esc` | `esc` |
@@ -65,6 +65,7 @@ The TUI has two keymaps, chosen with `tui.keymap` in the [config file](/docs/con
 | quit | `q` | `q` |
 | cancel a run, :apply, export or load (waits on a commit or rollback) / quit | `ctrl+c` | `ctrl+c` |
 | open the AI panel / close it | `a` | `a` |
+| AI panel: switch between ask and answer | `ctrl+t` | `ctrl+t` |
 | fix a failed run with AI (on its error tab) | `f` | `f` |
 | AI panel: load the proposed query into the editor (ctrl+enter / f5 also runs it) | `ctrl+o` | `ctrl+o` |
 | AI panel: copy the proposed query | `ctrl+y` | `ctrl+y` |

@@ -222,8 +222,8 @@ func (a *Model) toggleAI() {
 // aiKey handles a key while the panel has the focus. The input owns every
 // key but these, so no bare-letter binding fires while typing: the
 // proposal keys (ctrl+o loads, ctrl+enter/F5 loads and runs, ctrl+y
-// copies) all take a modifier or a function key, and enter only sends a
-// question.
+// copies) and the mode switch (ctrl+t) all take a modifier or a function
+// key, enter only sends a question, and tab moves on to the next pane.
 func (a *Model) aiKey(k tea.KeyPressMsg) tea.Cmd {
 	c := a.aiConvFor(a.aiConn())
 	nav := k.Text == "" // scrolling never takes a letter (vim binds j and k)
@@ -233,6 +233,12 @@ func (a *Model) aiKey(k tea.KeyPressMsg) tea.Cmd {
 		a.ai.in.Blur()
 		return nil
 	case a.km.Matches(k, keymap.FocusNext):
+		a.cycleFocus(1)
+		return nil
+	case a.km.Matches(k, keymap.FocusPrev):
+		a.cycleFocus(-1)
+		return nil
+	case a.km.Matches(k, keymap.AIMode):
 		a.ai.mode = 1 - a.ai.mode
 		return nil
 	case nav && a.km.Matches(k, keymap.PageUp):

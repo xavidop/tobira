@@ -725,6 +725,8 @@ func (a *Model) cycleFocus(d int) {
 	a.focus = order[((i+d)%len(order)+len(order))%len(order)]
 	if a.focus == focusAI {
 		a.ai.in.Focus()
+	} else {
+		a.ai.in.Blur()
 	}
 }
 

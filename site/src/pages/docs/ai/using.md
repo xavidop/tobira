@@ -17,7 +17,7 @@ scope, and the mode.
 | Key or command | Action |
 |---|---|
 | `a` | Open the panel from the grid. While the panel has focus `a` is typed text: press `esc` first, then `a` closes it |
-| `tab` | Switch between **ask** (propose a query, runs nothing) and **answer** (the assistant runs read-only queries) |
+| `ctrl+t` | Switch between **ask** (propose a query, runs nothing) and **answer** (the assistant runs read-only queries) |
 | `enter` | Send the question. On an empty input it does nothing |
 | `ctrl+o` | Load the latest proposed query into the editor |
 | `F5` / `ctrl+enter` | Load the latest proposal into the editor and run it |

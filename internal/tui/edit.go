@@ -93,6 +93,12 @@ func (a *Model) editorKey(k tea.KeyPressMsg) tea.Cmd {
 	case a.km.Matches(k, keymap.Back):
 		a.focus = focusGrid
 		return nil
+	case a.km.Matches(k, keymap.FocusNext):
+		a.cycleFocus(1)
+		return nil
+	case a.km.Matches(k, keymap.FocusPrev):
+		a.cycleFocus(-1)
+		return nil
 	case a.km.Matches(k, keymap.EditorToggle):
 		a.toggleEditor()
 		return nil

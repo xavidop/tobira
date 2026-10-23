@@ -232,7 +232,7 @@ func TestHintsFollowThePane(t *testing.T) {
 	}{
 		{"sidebar", PaneSidebar, []string{"f1 help", "enter open", "/ filter", "n add", ": cmd", "q quit"}, []string{"f filter", "s sort"}},
 		{"grid", PaneGrid, []string{"f1 help", "enter detail", "esc sidebar", "f filter", "s sort", "e edit", "y copy", "ctrl+e query", ": cmd", "q quit"}, []string{"n add", "a ask"}},
-		{"ai", PaneAI, []string{"enter send", "ctrl+o load", "ctrl+y copy", "esc grid"}, []string{"f filter", "q quit"}},
+		{"ai", PaneAI, []string{"enter send", "ctrl+t mode", "ctrl+o load", "ctrl+y copy", "esc grid"}, []string{"f filter", "q quit"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

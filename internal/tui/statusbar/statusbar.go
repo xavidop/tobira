@@ -260,8 +260,8 @@ var (
 		{keymap.Back, "grid", ""}, {keymap.EditorToggle, "close", ""},
 	}
 	aiHints = []hint{
-		{keymap.Open, "send", ""}, {keymap.LoadProposal, "load", ""}, {keymap.CopyProposal, "copy", ""},
-		{keymap.Back, "grid", ""},
+		{keymap.Open, "send", ""}, {keymap.AIMode, "mode", ""}, {keymap.LoadProposal, "load", ""},
+		{keymap.CopyProposal, "copy", ""}, {keymap.Back, "grid", ""},
 	}
 )
 

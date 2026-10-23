@@ -144,10 +144,14 @@ func TestCompletionCtrlSpaceAndTab(t *testing.T) {
 	if h.m.cp.open {
 		t.Fatal("the popup stayed open after accepting")
 	}
-	// With the popup closed, tab indents again.
+	// With the popup closed, tab moves on to the next pane instead of
+	// touching the text.
 	h.keys("tab")
-	if got := h.m.ed.Value(); got != "select * from tobira_people  " {
-		t.Fatalf("tab without the popup = %q", got)
+	if got := h.m.ed.Value(); got != "select * from tobira_people" {
+		t.Fatalf("tab without the popup changed the text to %q", got)
+	}
+	if h.m.focus == focusEditor {
+		t.Fatal("tab without the popup left the focus in the editor")
 	}
 }
 
@@ -708,7 +712,7 @@ func TestCompletionFiltersWhileTyping(t *testing.T) {
 	h.waitPopup()
 	h.m.cp.items = []driver.Completion{{Label: "users"}}
 	h.keys("tab")
-	if v := h.m.ed.Value(); v != "select * from tob  " {
+	if v := h.m.ed.Value(); v != "select * from tob" {
 		t.Fatalf("tab accepted a non-matching item: %q", v)
 	}
 }
