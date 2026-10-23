@@ -48,13 +48,28 @@ connections:
 | `options` | Driver-specific settings, passed to the driver. Most drivers take their settings from the DSN instead and refuse any option. See [Driver options](#driver-options). |
 | `color` | Sidebar colour in the [TUI](/docs/tui/): `red`, `green`, `yellow`, `orange`, `cyan`, `blue` or `magenta`. |
 | `tags` | Free-form labels, shown by `tobira connections list`. |
+| `ssh` | Reach the database through an SSH tunnel. A mapping with the keys below; see [SSH tunnels](/docs/connections/#ssh-tunnels). |
+
+The `ssh` keys:
+
+| Key | Meaning |
+|---|---|
+| `host` | Required. The SSH server, `host` or `host:port`. |
+| `port` | The SSH port when it is not in `host`; 22 by default. 1 to 65535. |
+| `user` | The SSH login. Defaults to `$USER`. |
+| `key` | A private key file (absolute, `~` or `$VAR`). Without it, the agent and the default keys in `~/.ssh` are tried. |
+| `passphrase` | A secret reference for the key's passphrase, never the value. |
+| `password` | A secret reference for SSH password authentication, tried after keys. |
+| `known_hosts` | The file the server's host key is checked against (absolute, `~` or `$VAR`); `~/.ssh/known_hosts` by default. An unknown host is an error. |
 
 A `~` is not expanded inside a DSN: use `sqlite:./notes.db` or an absolute path such as
 `sqlite:/home/me/notes.db`.
 
 Validation catches control characters in a name, driver, color, tag or DSN, an unknown key, a
-duplicate name, a connection with neither a `driver` nor a DSN scheme, a field of the wrong type, and
-a `password` that is not a parseable reference (an empty `env:` or `file://` is refused too). A
+duplicate name, a connection with neither a `driver` nor a DSN scheme, a field of the wrong type, a
+`password` that is not a parseable reference (an empty `env:` or `file://` is refused too), and an
+`ssh` block with no host, an unknown key, a bad port, a relative file path or a literal passphrase or
+password. A
 connection that fails validation is *broken*: tobira warns on stderr with the file, the line and the
 reason, lists it as broken, and keeps every other connection working. The reason never includes a
 password or any other value. See [Managing connections](/docs/connections/#broken-entries). A file

@@ -406,3 +406,35 @@ func TestExportDropsSecrets(t *testing.T) {
 		}
 	}
 }
+
+func TestExportKeepsTheSSHBlock(t *testing.T) {
+	in := []config.Connection{{Name: "prod", DSN: "postgres://app@db:5432/app",
+		SSH: &config.SSH{Host: "bastion", Port: 2222, User: "deploy", Key: "/k/id", Passphrase: "hunter2", Password: "env:SSH_PW", KnownHosts: "/k/kh"}}}
+	out, notes := Export(in)
+	if len(out) != 1 || out[0].SSH == nil {
+		t.Fatalf("out = %+v", out)
+	}
+	if out[0].SSH.Passphrase != "" || out[0].SSH.Password != "env:SSH_PW" || out[0].SSH.Host != "bastion" || out[0].SSH.Port != 2222 {
+		t.Errorf("ssh = %+v, want the literal passphrase dropped and the rest kept", out[0].SSH)
+	}
+	if len(notes) != 1 || !strings.Contains(notes[0], "ssh passphrase") || strings.Contains(notes[0], "hunter2") {
+		t.Errorf("notes = %v", notes)
+	}
+	if in[0].SSH.Passphrase != "hunter2" {
+		t.Error("Export changed the caller's block")
+	}
+	b, err := MarshalJSON(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `"ssh": {`) || !strings.Contains(string(b), `"known_hosts": "/k/kh"`) || strings.Contains(string(b), "passphrase") {
+		t.Errorf("json:\n%s", b)
+	}
+	cands, err := ParseFile(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cands) != 1 || !reflect.DeepEqual(cands[0].Conn.SSH, out[0].SSH) {
+		t.Errorf("read back %+v, want %+v", cands[0].Conn.SSH, out[0].SSH)
+	}
+}

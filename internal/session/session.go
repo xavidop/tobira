@@ -12,6 +12,7 @@ import (
 	"github.com/xavidop/tobira/driver"
 	"github.com/xavidop/tobira/internal/config"
 	"github.com/xavidop/tobira/internal/secrets"
+	"github.com/xavidop/tobira/internal/sshtunnel"
 )
 
 // openTimeout bounds one shared open, which runs detached from its waiters.
@@ -94,6 +95,7 @@ func (e *redactedError) As(target any) bool {
 type flight struct {
 	done chan struct{} // closed when conn and err are set
 	conn driver.Conn
+	tun  *sshtunnel.Tunnel
 	err  error
 }
 
@@ -102,6 +104,9 @@ type entry struct {
 	status Status
 	err    string
 	conn   driver.Conn
+	// tun is the SSH tunnel conn goes through, nil for a direct connection.
+	// It is closed after conn.
+	tun    *sshtunnel.Tunnel
 	flight *flight
 	adhoc  bool
 	// broken is set for a config entry that failed validation. Such an
@@ -292,7 +297,7 @@ func (m *Manager) Reload(cfg *config.Config) (added, changed, removed []string) 
 	if cfg != nil {
 		conns, broken = cfg.Connections, cfg.Broken
 	}
-	var stale []driver.Conn
+	var stale []opened
 	m.mu.Lock()
 	want := make(map[string]bool, len(conns)+len(broken))
 	order := make([]string, 0, len(m.order)+len(conns)+len(broken))
@@ -485,7 +490,12 @@ func (m *Manager) run(ctx context.Context, e *entry, f *flight, gen int) {
 	m.mu.Unlock()
 
 	cfg, err := m.res.ConnConfig(ctx, c)
+	var tc *sshtunnel.Config
+	if err == nil {
+		tc, err = m.res.SSH(ctx, c)
+	}
 	var conn driver.Conn
+	var tun *sshtunnel.Tunnel
 	resolved := err == nil
 	if err != nil {
 		cfg = unresolvedRedaction(c)
@@ -493,7 +503,7 @@ func (m *Manager) run(ctx context.Context, e *entry, f *flight, gen int) {
 		cfg.ReadOnly = cfg.ReadOnly || m.forceReadOnly
 		cfg.Embedder = m.embedder
 		cfg.Logger = m.logger
-		conn, err = m.reg.Open(ctx, cfg)
+		conn, tun, err = sshtunnel.OpenConn(ctx, m.reg, cfg, tc)
 	}
 
 	m.mu.Lock()
@@ -515,11 +525,11 @@ func (m *Manager) run(ctx context.Context, e *entry, f *flight, gen int) {
 	case e.gen != gen:
 		// Closed while connecting: discard the connection. Its Close error
 		// is dropped on purpose: nobody is left to act on it.
-		_ = conn.Close()
+		_ = closeConn(opened{conn, tun})
 		f.err = fmt.Errorf("%w: closed while opening", driver.ErrConnection)
 	default:
-		f.conn = conn
-		e.status, e.conn, e.err = Ready, conn, ""
+		f.conn, f.tun = conn, tun
+		e.status, e.conn, e.tun, e.err = Ready, conn, tun, ""
 	}
 	close(f.done)
 }
@@ -534,16 +544,20 @@ func (m *Manager) Test(ctx context.Context, c config.Connection) error {
 	if err != nil {
 		return redact(err, unresolvedRedaction(c))
 	}
+	tc, err := m.res.SSH(ctx, c)
+	if err != nil {
+		return redact(err, unresolvedRedaction(c))
+	}
 	cfg.ReadOnly = cfg.ReadOnly || m.forceReadOnly
 	cfg.Embedder = m.embedder
 	cfg.Logger = m.logger
-	conn, err := m.reg.Open(ctx, cfg)
+	conn, tun, err := sshtunnel.OpenConn(ctx, m.reg, cfg, tc)
 	if err != nil {
 		return redact(err, cfg)
 	}
 	err = conn.Ping(ctx)
 	// The close error is dropped on purpose: the connection was only a probe.
-	_ = conn.Close()
+	_ = closeConn(opened{conn, tun})
 	if err != nil {
 		return redact(err, cfg)
 	}
@@ -580,9 +594,9 @@ func (m *Manager) Close(name string) error {
 // It is idempotent.
 func (m *Manager) CloseAll() error {
 	m.mu.Lock()
-	var conns []driver.Conn
+	var conns []opened
 	for _, name := range m.order {
-		if c := m.reset(m.entries[name]); c != nil {
+		if c := m.reset(m.entries[name]); c.conn != nil {
 			conns = append(conns, c)
 		}
 	}
@@ -596,9 +610,9 @@ func (m *Manager) CloseAll() error {
 
 // reset returns e to Idle and hands back the connection to close, if any.
 // The caller holds m.mu.
-func (m *Manager) reset(e *entry) driver.Conn {
-	conn := e.conn
-	e.conn, e.err, e.status, e.flight = nil, "", Idle, nil
+func (m *Manager) reset(e *entry) opened {
+	conn := opened{e.conn, e.tun}
+	e.conn, e.tun, e.err, e.status, e.flight = nil, nil, "", Idle, nil
 	e.gen++
 	if e.broken != nil {
 		e.status, e.err = Failed, e.broken.Err
@@ -606,11 +620,22 @@ func (m *Manager) reset(e *entry) driver.Conn {
 	return conn
 }
 
-func closeConn(c driver.Conn) error {
-	if c == nil {
-		return nil
+// opened is a connection with the tunnel it goes through, if any.
+type opened struct {
+	conn driver.Conn
+	tun  *sshtunnel.Tunnel
+}
+
+// closeConn closes the connection, then its tunnel.
+func closeConn(c opened) error {
+	if c.conn == nil {
+		return c.tun.Close()
 	}
-	return c.Close()
+	err := c.conn.Close()
+	if terr := c.tun.Close(); err == nil {
+		err = terr
+	}
+	return err
 }
 
 // Redact masks secrets belonging to connection name in msg, for errors that

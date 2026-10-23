@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/xavidop/tobira/driver"
 	"github.com/xavidop/tobira/internal/query"
+	"github.com/xavidop/tobira/internal/sshtunnel"
 	"github.com/xavidop/tobira/internal/tui/detail"
 )
 
@@ -100,7 +101,7 @@ func (a *app) runWatch(cmd *cobra.Command, args []string, f watchFlags) error {
 		return usageError(err)
 	}
 	defer closeLog()
-	cfg, err := a.resolve(ctx, cmd, args[0])
+	cfg, tc, err := a.resolve(ctx, cmd, args[0])
 	if err != nil {
 		return err
 	}
@@ -115,11 +116,12 @@ func (a *app) runWatch(cmd *cobra.Command, args []string, f watchFlags) error {
 		defer cancel()
 	}
 	cfg.Logger = log
-	conn, err := a.deps.Registry.Open(wctx, cfg)
+	conn, tun, err := sshtunnel.OpenConn(wctx, a.deps.Registry, cfg, tc)
 	if err != nil {
 		log.Error("open failed", "kind", driver.KindName(err))
 		return scrub(connectError(err), cfg)
 	}
+	defer func() { _ = tun.Close() }()
 	defer func() { _ = conn.Close() }()
 	w, ok := driver.As[driver.Watcher](conn)
 	if !ok {

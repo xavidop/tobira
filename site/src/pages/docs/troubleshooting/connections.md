@@ -34,6 +34,28 @@ password to `password:`. Fix the line, or remove the entry with
   dotenv or `keyring:`.
 - **`TOBIRA_CONN_<NAME>_PASSWORD`**, when set, replaces the reference; doctor says so.
 
+## An SSH tunnel does not open
+
+A connection with an `ssh:` block fails before the driver runs when the tunnel cannot open. The
+error starts with `ssh tunnel:` and says which step failed; `tobira doctor` checks the files
+without any network.
+
+- **`host key is not in known_hosts`** or **`known_hosts file ... does not exist`**: add the
+  server once with `ssh-keyscan -H <host> >> ~/.ssh/known_hosts`, or connect to it with `ssh` once.
+  tobira never trusts a host on first use.
+- **`host key does not match known_hosts`**: the server's key changed, or something sits between
+  you and it. Check with the server's owner before removing the old line.
+- **`authentication failed`**: no key the server accepts was offered. Set `key:` to the right
+  file, or run an SSH agent that holds it (`ssh-add`), or set `password:` to a secret reference.
+  `~/.ssh/config` is not read: a host alias, user or identity file set there must go in the block.
+- **`key ... is encrypted; set ssh.passphrase`** and **`wrong passphrase`**: the key needs its
+  passphrase as a secret reference.
+- **`the DSN must be of the form scheme://host:port/...`**, **`names several hosts`** or
+  **`has no port`**: the tunnel forwards to exactly one host and port. See
+  [which DSNs work](/docs/connections/#ssh-tunnels).
+- **The database refuses the certificate** (`verify-full`, host name mismatch): the driver now
+  connects to `127.0.0.1`. Use `verify-ca` or the driver's server-name option.
+
 ## The OS keyring
 
 `keyring:<name>` reads the password `tobira connections set-password <name>` stored, from the macOS

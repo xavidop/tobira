@@ -105,6 +105,8 @@ tobira query local-pg "select now()"
 - **Connections and secrets.** Passwords are references (`env:`, `file://`, dotenv or the OS
   keyring), never stored in the config. Import connections from DBeaver, TablePlus or
   `~/.pgpass`, and export them to another machine.
+- **SSH tunnels.** An `ssh:` block on a connection reaches a database behind a bastion host, with
+  key, agent or password authentication and host keys checked against `known_hosts`.
 - **`tobira doctor`.** One command checks the config, connections, secrets, drivers, plugins, AI,
   MCP and file permissions.
 - **Query history.** Every query that tobira, the assistant or an MCP client runs is logged

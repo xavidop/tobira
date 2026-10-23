@@ -56,6 +56,7 @@ type connRow struct {
 	Name     string   `json:"name"`
 	Driver   string   `json:"driver"`
 	DSN      string   `json:"dsn"`
+	SSH      string   `json:"ssh"`
 	Password string   `json:"password_ref"`
 	ReadOnly bool     `json:"read_only"`
 	Color    string   `json:"color"`
@@ -88,18 +89,25 @@ func (a *app) newConnListCmd() *cobra.Command {
 				if tags == nil {
 					tags = []string{}
 				}
-				rows = append(rows, connRow{
+				row := connRow{
 					Name: c.Name, Driver: drv, DSN: driver.RedactDSN(c.DSN), Password: ref,
 					ReadOnly: c.ReadOnly, Color: c.Color, Tags: tags,
-				})
+				}
+				if c.SSH != nil {
+					row.SSH = c.SSH.Host
+					if c.SSH.User != "" {
+						row.SSH = c.SSH.User + "@" + c.SSH.Host
+					}
+				}
+				rows = append(rows, row)
 			}
 			out := cmd.OutOrStdout()
 			if a.deps.IsTTY != nil && a.deps.IsTTY(a.streams.Out) {
 				tw := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
-				_, _ = fmt.Fprintln(tw, "NAME\tDRIVER\tDSN\tREAD-ONLY\tTAGS\tBROKEN")
+				_, _ = fmt.Fprintln(tw, "NAME\tDRIVER\tDSN\tSSH\tREAD-ONLY\tTAGS\tBROKEN")
 				for _, r := range rows {
-					_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%t\t%s\t\n", query.EscapeControls(r.Name),
-						query.EscapeControls(r.Driver), query.EscapeControls(r.DSN), r.ReadOnly,
+					_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%t\t%s\t\n", query.EscapeControls(r.Name),
+						query.EscapeControls(r.Driver), query.EscapeControls(r.DSN), query.EscapeControls(r.SSH), r.ReadOnly,
 						query.EscapeControls(strings.Join(r.Tags, ",")))
 				}
 				for _, b := range cfg.Broken {
@@ -107,7 +115,7 @@ func (a *app) newConnListCmd() *cobra.Command {
 					if name == "" {
 						name = fmt.Sprintf("(entry at line %d)", b.Line)
 					}
-					_, _ = fmt.Fprintf(tw, "%s\t\t\t\t\tline %d: %s\n", query.EscapeControls(name), b.Line,
+					_, _ = fmt.Fprintf(tw, "%s\t\t\t\t\t\tline %d: %s\n", query.EscapeControls(name), b.Line,
 						query.EscapeControls(driver.RedactMessage(b.Err, driver.ConnConfig{})))
 				}
 				return tw.Flush()

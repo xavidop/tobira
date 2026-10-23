@@ -331,6 +331,14 @@ connections:
     read_only: true
 ```
 
+A database behind a bastion takes an `ssh:` block on the connection: `host` (or `host:port`),
+`user`, `key` (a private key file; else the agent and `~/.ssh/id_*`), `passphrase` and `password`
+(secret references), `known_hosts` (default `~/.ssh/known_hosts`; the host key must already be
+there, tobira never trusts on first use: `ssh-keyscan -H host >> ~/.ssh/known_hosts`). tobira
+forwards a loopback port to the DSN's host and port, so the DSN must be `scheme://host:port/...`
+with one host; replica sets, `+srv` and file databases cannot be tunnelled. `~/.ssh/config` is not
+read. Docs: https://xavidop.github.io/tobira/docs/connections/#ssh-tunnels.
+
 Password precedence: `TOBIRA_CONN_<NAME>_PASSWORD`, then the `password:` reference, then the DSN.
 References compiled in: `env:`, `file://`, dotenv and `keyring:` (the OS keyring; store a password with
 `tobira connections set-password <name>`, which reads it with no echo, or from stdin with `--stdin`). Other
