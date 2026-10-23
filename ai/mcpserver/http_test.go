@@ -579,7 +579,6 @@ func TestHTTPShutdownDrainIsBounded(t *testing.T) {
 	e := newEnv(t)
 	started := make(chan struct{}, 1)
 	release := make(chan struct{})
-	defer close(release)
 	var done atomic.Bool
 	r := e.serveHTTPWith(t, config.MCP{Expose: []string{"lite"}}, HTTP{Token: driver.NewSecret(cfgToken)}, func(s *srv) {
 		s.grace, s.drain = 200*time.Millisecond, 300*time.Millisecond
@@ -593,6 +592,16 @@ func TestHTTPShutdownDrainIsBounded(t *testing.T) {
 	}
 	if took > 2*time.Second || done.Load() {
 		t.Errorf("ServeHTTP took %v (call done %v): the drain is not bounded", took, done.Load())
+	}
+	// The call outlived the server on purpose. Let it finish before the
+	// test returns: released, it still records its history entry under the
+	// test's temp dir, which would otherwise be removed underneath it.
+	close(release)
+	for deadline := time.Now().Add(10 * time.Second); !done.Load(); {
+		if time.Now().After(deadline) {
+			t.Fatal("the stuck call never finished once released")
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 
