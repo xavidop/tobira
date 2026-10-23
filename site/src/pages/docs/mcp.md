@@ -26,8 +26,9 @@ claude mcp add tobira -- tobira mcp --expose local-pg
 ```
 
 Then ask Claude Code something about the database. To check the server by hand, run
-`tobira mcp --expose local-pg` and type nothing: it waits for a client on stdin and exits when stdin
-closes.
+`tobira mcp --expose local-pg` and type nothing: it prints what it serves on stderr, waits for a
+client on stdin and exits when stdin closes. Nothing else is printed: stdout is the protocol stream,
+and the `--debug` log goes to a file.
 
 ## In this section
 

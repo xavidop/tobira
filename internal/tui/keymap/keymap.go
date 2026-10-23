@@ -73,6 +73,10 @@ const (
 	Cancel  Action = "cancel"
 	Edit    Action = "edit"
 	Ask     Action = "ask"
+	// AIMode switches the AI panel between ask and answer. It takes a
+	// modifier, so typing a question never triggers it, and leaves tab to
+	// the pane cycle.
+	AIMode Action = "ai-mode"
 	// FixError sends a failed run to the AI panel, from its error tab.
 	// It shares f with Filter, which acts on the browse tab only.
 	FixError Action = "fix-error"
@@ -109,7 +113,7 @@ var groups = []struct {
 	{"Navigation", []Action{Up, Down, Left, Right, PageUp, PageDown, Top, Bottom, Home, End}},
 	{"Panes", []Action{FocusNext, FocusPrev, Open, Back, Filter, SidebarFilter, Sort}},
 	{"Grid", []Action{WidenCol, NarrowCol, CopyCell, CopyRow, Edit, InsertRow, DeleteRow, SetNull, SaveEdit, FindSimilar, CollapseAll, ExpandAll, Watch, WatchPause, WatchClear}},
-	{"App", []Action{Palette, Help, Quit, Cancel, Ask, FixError, LoadProposal, CopyProposal, ConnAdd, ConnEdit, ConnRm}},
+	{"App", []Action{Palette, Help, Quit, Cancel, Ask, AIMode, FixError, LoadProposal, CopyProposal, ConnAdd, ConnEdit, ConnRm}},
 	{"Editor", []Action{EditorToggle, RunStatement, RunBuffer, PrevTab, NextTab, CloseTab, Complete, HistSearch}},
 }
 
@@ -135,13 +139,13 @@ var descriptions = map[Action]string{
 	Up: "move up", Down: "move down", Left: "move left", Right: "move right",
 	PageUp: "page up", PageDown: "page down", Top: "go to top", Bottom: "go to bottom",
 	Home: "first column", End: "last column",
-	FocusNext: "next pane", FocusPrev: "previous pane", Open: "open / row detail",
-	Back: "back / close", Filter: "filter rows", SidebarFilter: "filter sidebar", Sort: "cycle sort",
+	FocusNext: "next pane (sidebar, grid, editor, AI panel)", FocusPrev: "previous pane", Open: "open / row detail",
+	Back: "back / close; in the grid, focus the sidebar", Filter: "filter rows", SidebarFilter: "filter sidebar", Sort: "cycle sort",
 	WidenCol: "widen column", NarrowCol: "narrow column", CopyCell: "copy cell", CopyRow: "copy row as JSON",
-	Palette: "command palette", Help: "help", Quit: "quit", Cancel: "cancel a run, :apply, export or load (waits on a commit or rollback) / quit", Edit: "edit cell",
-	Ask: "open the AI panel / close it", FixError: "fix a failed run with AI (on its error tab)",
+	Palette: "command palette", Help: "help", Quit: "quit", Cancel: "cancel a run, :apply, export or load (waits on a commit or rollback) / quit", Edit: "edit cell (grid or row detail)",
+	Ask: "open the AI panel / close it", AIMode: "AI panel: switch between ask and answer", FixError: "fix a failed run with AI (on its error tab)",
 	LoadProposal: "AI panel: load the proposed query into the editor (ctrl+enter / f5 also runs it)", CopyProposal: "AI panel: copy the proposed query",
-	InsertRow: "insert a row", DeleteRow: "mark / unmark the row for deletion",
+	InsertRow: "insert a row", DeleteRow: "mark / unmark the row for deletion (grid or row detail)",
 	SetNull: "set the edited cell to NULL", SaveEdit: "save a multi-line cell edit",
 	FindSimilar: "find rows similar to this one (vector collections)",
 	CollapseAll: "row detail: collapse every node", ExpandAll: "row detail: expand every node",
@@ -252,7 +256,7 @@ func defaultKeys() map[Action][]string {
 		Edit: {"e"}, InsertRow: {"i"}, DeleteRow: {"d"}, SetNull: {"ctrl+n"}, SaveEdit: {"ctrl+s"},
 		FindSimilar: {"S"}, CollapseAll: {"["}, ExpandAll: {"]"},
 		Watch: {"W"}, WatchPause: {"p"}, WatchClear: {"c"},
-		Ask: {"a"}, FixError: {"f"}, ConnAdd: {"n"}, ConnEdit: {"E"}, ConnRm: {"D"},
+		Ask: {"a"}, AIMode: {"ctrl+t"}, FixError: {"f"}, ConnAdd: {"n"}, ConnEdit: {"E"}, ConnRm: {"D"},
 		LoadProposal: {"ctrl+o"}, CopyProposal: {"ctrl+y"},
 		// ctrl+enter needs a terminal with the kitty keyboard protocol (which
 		// tobira requests); f5 and shift+f5 work everywhere.

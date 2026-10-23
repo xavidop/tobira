@@ -66,6 +66,9 @@ example) that expand with `enter`, `space` or `right` and collapse with `left`.
   line.
 - A very large value shows `loading…` while its tree is built. `esc` closes the row detail.
 - `y` copies the value under the cursor and `Y` copies the whole row as JSON.
+- `e` edits the field under the cursor and `d` marks the row for deletion, as in the grid (see
+  [editing rows](/docs/editing/)). The detail shows the pending value, and its title says when the
+  row is marked.
 - NULL and the text `NULL` look different, and control characters are shown escaped.
 
 ## Copy

@@ -27,4 +27,4 @@ connections                 │local ▸ main ▸ kv · row detail
                             │                                                                       
                             │                                                                       
                             │                                                                       
-local › main › kv  row 2 of 6  T f1 help  enter detail  f filter  s sort  e edit  ctrl+e query  ●
+local › main › kv  row 2 of 6  T f1 help  enter detail  esc sidebar  f filter  s sort  e edit  ●

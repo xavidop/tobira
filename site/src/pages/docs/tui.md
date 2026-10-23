@@ -61,7 +61,7 @@ config file.
   top, the grid of the active tab, then the editor at the bottom. On a short terminal the focused
   editor takes the whole column.
 
-Below 60 columns only the focused pane is drawn. `tab` switches between them.
+Below 60 columns only the focused pane is drawn. `tab` and `shift+tab` move between the open panes from anywhere, the editor and the AI panel included, and `esc` walks back: from the AI panel or the editor to the grid, and from the grid to the sidebar.
 
 ## Keys
 
@@ -69,7 +69,8 @@ The common keys. The [keymaps page](/docs/keymaps/) has every binding for both k
 
 | Key | Does |
 |---|---|
-| `tab` / `shift+tab` | Switch pane |
+| `tab` / `shift+tab` | Next / previous pane: sidebar, grid, editor and AI panel, those that are open |
+| `esc` | Back: close an overlay, or move the focus from the editor or AI panel to the grid, and from the grid to the sidebar |
 | arrows, `pgup`, `pgdown` | Move. The vim keymap adds `hjkl`, `ctrl+d` and `ctrl+u`. |
 | `ctrl+home` / `ctrl+end` | Top / bottom. The vim keymap adds `gg` and `G`. |
 | `home` / `end` | First / last column |

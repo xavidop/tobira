@@ -598,6 +598,9 @@ func (a *Model) key(k tea.KeyPressMsg) tea.Cmd {
 			a.dropDetail()
 			return nil
 		}
+		if cmd, ok := a.detailEditKey(k); ok {
+			return cmd
+		}
 		d, cmd := a.det.Update(k)
 		a.det = &d
 		return cmd
@@ -657,6 +660,11 @@ func (a *Model) gridKey(k tea.KeyPressMsg) tea.Cmd {
 		}
 	}
 	switch {
+	case a.km.Matches(k, keymap.Back):
+		// esc walks back towards the sidebar: the AI panel and the editor
+		// hand the focus to the grid, the grid hands it on.
+		a.focus = focusSidebar
+		return nil
 	case a.km.Matches(k, keymap.Watch):
 		return a.watchCmd(palette.WatchCmd{})
 	case t != nil && t.watch == nil && t.state == tabFailed && a.km.Matches(k, keymap.FixError):
@@ -720,6 +728,8 @@ func (a *Model) cycleFocus(d int) {
 	a.focus = order[((i+d)%len(order)+len(order))%len(order)]
 	if a.focus == focusAI {
 		a.ai.in.Focus()
+	} else {
+		a.ai.in.Blur()
 	}
 }
 
@@ -981,6 +991,7 @@ func (a *Model) openCollection(msg sidebar.OpenCollectionMsg) tea.Cmd {
 	a.kv = isKeyValue(st.Info, msg.Type)
 	a.gr.SetFormat(cellFormat(st.Info, msg.Type))
 	a.focus = focusGrid
+	a.active = 0 // the browse tab, which a run tab may have hidden
 	a.dropDetail()
 	a.help = false
 	a.filterText = ""
@@ -1443,7 +1454,11 @@ func (a *Model) gridPane(r rect) (title, content string) {
 		if t := a.activeTab(); t != nil {
 			crumb = query.EscapeControls(t.conn) + " ▸ " + t.label
 		}
-		return crumb + " · row detail", a.det.View(r.w, r.h)
+		title = crumb + " · row detail"
+		if a.detailDeleted() {
+			title += " · marked for deletion"
+		}
+		return title, a.det.View(r.w, r.h)
 	}
 	if conn, ok := a.failedConn(); ok {
 		return "connection " + query.EscapeControls(conn), a.failedView(conn, r.w)

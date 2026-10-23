@@ -245,6 +245,10 @@ func key(s string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyF1}
 	case "ctrl+c":
 		return tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}
+	case "ctrl+e":
+		return tea.KeyPressMsg{Code: 'e', Mod: tea.ModCtrl}
+	case "ctrl+t":
+		return tea.KeyPressMsg{Code: 't', Mod: tea.ModCtrl}
 	case "ctrl+home":
 		return tea.KeyPressMsg{Code: tea.KeyHome, Mod: tea.ModCtrl}
 	case "ctrl+end":
@@ -1456,5 +1460,77 @@ func TestAppKeysClearAPendingG(t *testing.T) {
 	h.keys("g", "g")
 	if r, _ := h.m.gr.Cursor(); r != 0 {
 		t.Fatalf("cursor = %d, a real gg goes to the top", r)
+	}
+}
+
+// esc walks the focus back towards the sidebar: editor to grid, grid to
+// sidebar. A live tail tab keeps esc for closing itself.
+func TestEscWalksBackToTheSidebar(t *testing.T) {
+	h := newHarness(t)
+	h.keys("enter")
+	h.until("main")
+	h.keys("down", "enter")
+	h.until("tobira_people")
+	h.keys("down", "enter")
+	h.until("Ada Lovelace")
+	if h.m.focus != focusGrid {
+		t.Fatalf("focus after opening a collection = %v", h.m.focus)
+	}
+	h.keys("ctrl+e")
+	if h.m.focus != focusEditor {
+		t.Fatalf("focus after ctrl+e = %v", h.m.focus)
+	}
+	h.keys("esc")
+	if h.m.focus != focusGrid {
+		t.Fatalf("esc in the editor left the focus on %v", h.m.focus)
+	}
+	h.keys("esc")
+	if h.m.focus != focusSidebar {
+		t.Fatalf("esc in the grid left the focus on %v", h.m.focus)
+	}
+	if !strings.Contains(h.text(), "Ada Lovelace") {
+		t.Fatal("esc in the grid closed the collection")
+	}
+}
+
+// tab and shift+tab cycle through the open panes from anywhere, the editor
+// and the AI panel included; esc walks back towards the sidebar.
+func TestTabCyclesThroughTheOpenPanes(t *testing.T) {
+	h := newAIHarness(t, askFake(), nil)
+	h.keys("enter")
+	h.until("main")
+	h.keys("down", "enter")
+	h.until("tobira_people")
+	h.keys("down", "enter")
+	h.until("Ada Lovelace")
+	h.keys("ctrl+e")   // open the editor: focus moves there
+	h.keys("esc", "a") // back to the grid, then open the AI panel: focus moves there
+	if h.m.focus != focusAI {
+		t.Fatalf("focus after a = %v", h.m.focus)
+	}
+	want := []focusKind{focusSidebar, focusGrid, focusEditor, focusAI, focusSidebar}
+	for _, f := range want {
+		h.keys("tab")
+		if h.m.focus != f {
+			t.Fatalf("tab reached %v, want %v", h.m.focus, f)
+		}
+	}
+	h.keys("shift+tab")
+	if h.m.focus != focusAI {
+		t.Fatalf("shift+tab from the sidebar reached %v, want the AI panel", h.m.focus)
+	}
+	if !h.m.ai.in.Focused() {
+		t.Fatal("the AI input is not focused after tabbing into the panel")
+	}
+	h.keys("tab")
+	if h.m.ai.in.Focused() {
+		t.Fatal("the AI input kept the focus after tabbing out of the panel")
+	}
+	h.keys("shift+tab") // back into the AI panel, then esc walks out
+	for _, f := range []focusKind{focusGrid, focusSidebar} {
+		h.keys("esc")
+		if h.m.focus != f {
+			t.Fatalf("esc reached %v, want %v", h.m.focus, f)
+		}
 	}
 }

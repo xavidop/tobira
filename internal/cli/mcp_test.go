@@ -31,7 +31,7 @@ func mcpHarness(t *testing.T, mcpSection string) (*harness, *[]cli.MCPOptions) {
 func TestMCPServesWithTheConfigPolicy(t *testing.T) {
 	h, got := mcpHarness(t, "mcp:\n  expose: [local-pg, ro]\n  allow_writes: [local-pg]\n  max_rows: 50\n  send_rows: never\n")
 	out, errOut, code := h.exec(t, context.Background(), "mcp")
-	if code != 0 || out != "" || errOut != "" {
+	if code != 0 || out != "" || errOut != "tobira mcp: serving local-pg, ro (writes allowed on local-pg) over stdio; waiting for a client on stdin\n" {
 		t.Fatalf("code=%d stdout=%q stderr=%q", code, out, errOut)
 	}
 	if len(*got) != 1 {

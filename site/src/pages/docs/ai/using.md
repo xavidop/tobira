@@ -8,6 +8,8 @@ title: Using the assistant
 You can talk to the assistant in the terminal UI's AI panel, or from the shell with `tobira ask`.
 Both use the same tools. This page covers both, plus similarity search on vector databases.
 
+The assistant is told what a query is for the connection's driver, so on MongoDB it writes command documents, on Redis commands, and on the vector and document stores tobira's JSON request shapes, as the driver pages describe them.
+
 ## The terminal UI panel
 
 Press `a` (or run `:ask`) to open the panel on the right of the screen, or over the whole screen on
@@ -17,7 +19,7 @@ scope, and the mode.
 | Key or command | Action |
 |---|---|
 | `a` | Open the panel from the grid. While the panel has focus `a` is typed text: press `esc` first, then `a` closes it |
-| `tab` | Switch between **ask** (propose a query, runs nothing) and **answer** (the assistant runs read-only queries) |
+| `ctrl+t` | Switch between **ask** (propose a query, runs nothing) and **answer** (the assistant runs read-only queries) |
 | `enter` | Send the question. On an empty input it does nothing |
 | `ctrl+o` | Load the latest proposed query into the editor |
 | `F5` / `ctrl+enter` | Load the latest proposal into the editor and run it |

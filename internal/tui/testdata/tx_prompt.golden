@@ -27,4 +27,4 @@ connections                 │open transaction
                             │                                                                       
                             │                                                                       
                             │                                                                       
-local › main › tobira_people  transaction open on local        f1 help  enter detail  f filter  TX ●
+local › main › tobira_people  transaction open on local     f1 help  enter detail  esc sidebar  TX ●

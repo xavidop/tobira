@@ -20,9 +20,9 @@ until `:apply` writes them. Editing needs a driver that supports edits (see the
 
 | Key or command | Does |
 |---|---|
-| `e` | Edit the current cell. `enter` saves, `esc` cancels. |
+| `e` | Edit the current cell, in the grid or in the [row detail](/docs/tui/browsing/#row-detail). `enter` saves, `esc` cancels. |
 | `i` | Insert a row, shown above the loaded rows and marked `+`. Fields you leave unset (`default`) are filled by the database. |
-| `d` | Mark the current row for deletion (struck through, `-`). `d` again unmarks it. |
+| `d` | Mark the current row for deletion (struck through, `-`), in the grid or in the row detail. `d` again unmarks it. |
 | `ctrl+n` | Set the field to NULL, when the field allows it. |
 | `:apply` | Write every pending change, in the order you made them. |
 | `:discard` | Drop every pending change, after a `y/N` confirmation. |

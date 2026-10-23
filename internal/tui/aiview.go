@@ -72,7 +72,7 @@ func (a *Model) aiTranscript(conn string, w int) []string {
 	c := a.ai.conv[conn]
 	var lines []string
 	if c == nil || len(c.entries) == 0 {
-		lines = wrapStyled(st.Dim, "ask about "+conn+": tab switches between ask (propose a query) and answer (run read-only queries)", w)
+		lines = wrapStyled(st.Dim, "ask about "+conn+": ctrl+t switches between ask (propose a query) and answer (run read-only queries)", w)
 	}
 	if c != nil {
 		last := -1

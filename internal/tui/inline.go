@@ -363,8 +363,7 @@ func (a *Model) cellKey(k tea.KeyPressMsg) tea.Cmd {
 		if !c.field.Nullable {
 			return a.flash(c.field.Name+" can't be NULL", true)
 		}
-		a.commitCell(driver.Null())
-		return nil
+		return a.commitCell(driver.Null())
 	}
 	if c.multi() {
 		if a.km.Matches(k, keymap.SaveEdit) || k.String() == "alt+enter" {
@@ -416,11 +415,10 @@ func (a *Model) commitText(text string) tea.Cmd {
 		c.err = err.Error()
 		return nil
 	}
-	a.commitCell(v)
-	return nil
+	return a.commitCell(v)
 }
 
-func (a *Model) commitCell(v driver.Value) {
+func (a *Model) commitCell(v driver.Value) tea.Cmd {
 	c := a.cell
 	a.cell = nil
 	if c.ins != nil {
@@ -429,6 +427,7 @@ func (a *Model) commitCell(v driver.Value) {
 		a.pend.setCell(c.key, c.field.Name, c.orig, v)
 	}
 	a.syncPending()
+	return a.refreshDetail()
 }
 
 // placeholder is shown in an empty input: NULL over a NULL value, default

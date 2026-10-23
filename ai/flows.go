@@ -73,7 +73,7 @@ type flows struct {
 
 // schemaInfo is the schema context of a scope, ready for a prompt.
 type schemaInfo struct {
-	dialect, kind, text string
+	dialect, kind, syntax, text string
 }
 
 // schema builds the scope's schema context, redacted for the connection
@@ -94,7 +94,7 @@ func (f *flows) schema(ctx context.Context, scope assistant.Scope) (schemaInfo, 
 		}
 		return schemaInfo{}, fmt.Errorf("%w: %s", assistant.ErrScope, f.a.scrub(scope.Conn, err.Error()))
 	}
-	return schemaInfo{dialect: sc.Dialect, kind: sc.Kind, text: f.a.scrub(scope.Conn, sc.Text)}, nil
+	return schemaInfo{dialect: sc.Dialect, kind: sc.Kind, syntax: sc.Syntax, text: f.a.scrub(scope.Conn, sc.Text)}, nil
 }
 
 // render renders a prompt into the conversation and the request settings
@@ -210,7 +210,7 @@ func (f *flows) askTurn(ctx context.Context, t *turn, in askInput) (proposalOutp
 	}
 	offered := schemaTools(t.ts, scope)
 	msgs, r, err := f.render(ctx, promptAsk, map[string]any{
-		"dialect": sc.dialect, "kind": sc.kind, "schema": sc.text, "connection": scope.Conn,
+		"dialect": sc.dialect, "kind": sc.kind, "syntax": sc.syntax, "schema": sc.text, "connection": scope.Conn,
 		"question": f.a.scrub(scope.Conn, in.Question),
 		"history":  f.a.history(scope.Conn, turns(in.History)),
 		"tools":    len(offered) > 0,
@@ -245,7 +245,7 @@ func (f *flows) fixErrorTurn(ctx context.Context, t *turn, in fixErrorInput) (pr
 	}
 	offered := schemaTools(t.ts, scope)
 	msgs, r, err := f.render(ctx, promptFixError, map[string]any{
-		"dialect": sc.dialect, "kind": sc.kind, "schema": sc.text,
+		"dialect": sc.dialect, "kind": sc.kind, "syntax": sc.syntax, "schema": sc.text,
 		"query": f.a.scrub(scope.Conn, in.Query),
 		"error": f.a.scrub(scope.Conn, errText),
 		"tools": len(offered) > 0,
@@ -282,7 +282,7 @@ func (f *flows) answerTurn(ctx context.Context, t *turn, in answerInput) (answer
 		ctx = tools.WithExecute(ctx)
 	}
 	msgs, r, err := f.render(ctx, promptAnswer, map[string]any{
-		"dialect": sc.dialect, "kind": sc.kind, "schema": sc.text, "connection": scope.Conn,
+		"dialect": sc.dialect, "kind": sc.kind, "syntax": sc.syntax, "schema": sc.text, "connection": scope.Conn,
 		"question": f.a.scrub(scope.Conn, in.Question),
 		"history":  f.a.history(scope.Conn, turns(in.History)),
 		"execute":  in.AllowExecute,

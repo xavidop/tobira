@@ -277,7 +277,7 @@ func TestAIAnswerModeShowsToolCalls(t *testing.T) {
 	h := newAIHarness(t, f, nil)
 	h.send(tea.WindowSizeMsg{Width: 200, Height: winH}) // whole tool lines
 	h.openAI()
-	h.keys("tab")
+	h.keys("ctrl+t")
 	if !strings.Contains(h.text(), "· answer") {
 		t.Fatalf("tab did not switch to answer:\n%s", h.text())
 	}
@@ -306,7 +306,7 @@ func TestAIAnswerModeShowsToolCalls(t *testing.T) {
 		}
 	}
 	// :ask! sends in answer mode from anywhere.
-	h.keys("tab", "esc") // back to ask, then leave
+	h.keys("ctrl+t", "esc") // back to ask, then leave
 	h.send(palette.AskCmd{Question: "and now?", Answer: true})
 	h.pump(func() bool { return h.m.ai.turn == nil && len(f.Calls()) == 2 })
 	if f.Calls()[1].Method != "Answer" || f.Calls()[1].Req.(assistant.AnswerRequest).Question != "and now?" {
@@ -340,7 +340,7 @@ func TestAIConsentPrompt(t *testing.T) {
 		t.Run(tc.key, func(t *testing.T) {
 			h := newAIHarness(t, consentFake(), nil)
 			h.openAI()
-			h.keys("tab")
+			h.keys("ctrl+t")
 			h.typ("rows?")
 			h.keys("enter")
 			h.until("send 3 rows from local to fake/model?")
@@ -370,7 +370,7 @@ func TestAIConsentPrompt(t *testing.T) {
 		}}
 		h := newAIHarness(t, f, nil)
 		h.openAI()
-		h.keys("tab")
+		h.keys("ctrl+t")
 		h.typ("rows?")
 		h.keys("enter")
 		h.until("send 1 row from local")
@@ -399,7 +399,7 @@ func TestAIConsentMemorySpansTheSessionUntilReload(t *testing.T) {
 	h, path := newConnHarness(t)
 	h.m.asst = f
 	h.openAI()
-	h.keys("tab")
+	h.keys("ctrl+t")
 	h.askAI("one")
 	h.askAI("two")
 	// A connection write that leaves local alone keeps its session.
@@ -451,7 +451,7 @@ func TestAIExecute(t *testing.T) {
 	h := newAIHarness(t, f, nil)
 	h.send(tea.WindowSizeMsg{Width: 200, Height: winH}) // the whole header
 	h.openAI()
-	h.keys("tab")
+	h.keys("ctrl+t")
 	h.askAI("delete ada")
 	if !strings.Contains(h.text(), "no execute") {
 		t.Fatalf("execute on by default:\n%s", h.text())
@@ -838,7 +838,7 @@ func TestAIModelTextIsEscaped(t *testing.T) {
 	if !strings.Contains(h.text(), `\x1b`) {
 		t.Fatalf("escapes not shown visibly:\n%s", h.text())
 	}
-	h.keys("tab")
+	h.keys("ctrl+t")
 	h.askAI("q")
 	tuitest.NoInjectedControls(t, h.raw())
 	if !strings.Contains(h.text(), "http://example.com") {
@@ -961,7 +961,7 @@ func TestAIPromptNeverReplacesAnother(t *testing.T) {
 	h := newAIHarness(t, consentFake(), nil)
 	h.send(tea.WindowSizeMsg{Width: 200, Height: winH})
 	h.openAI()
-	h.keys("tab")
+	h.keys("ctrl+t")
 	h.m.askYN("discard the unsaved query? y/N", "", nil, "")
 	h.send(palette.AskCmd{Question: "rows?", Answer: true})
 	h.pump(func() bool { return h.m.ai.queued != nil })
@@ -996,7 +996,7 @@ func TestAIExecuteConfirmRefusedWhenReadOnly(t *testing.T) {
 	h.send(tea.WindowSizeMsg{Width: 200, Height: winH})
 	h.openColl("ro", "tobira_people")
 	h.openAI()
-	h.keys("tab")
+	h.keys("ctrl+t")
 	h.askAI("delete everyone")
 	if ok := <-got; ok || h.m.ask != nil {
 		t.Fatalf("execute confirmed on a read-only connection (prompt %v)", h.m.ask != nil)
@@ -1028,7 +1028,7 @@ func TestAIGlamourCharacterReferencesAreEscaped(t *testing.T) {
 	h := newAIHarness(t, f, nil)
 	h.send(tea.WindowSizeMsg{Width: 200, Height: winH})
 	h.openAI()
-	h.keys("tab")
+	h.keys("ctrl+t")
 	h.askAI("q")
 	raw := h.raw()
 	tuitest.NoInjectedControls(t, raw)
@@ -1076,7 +1076,7 @@ func TestAIPromptIgnoresTypeAhead(t *testing.T) {
 	h := newAIHarness(t, consentFake(), nil)
 	h.m.now = func() time.Time { return now }
 	h.openAI()
-	h.keys("tab")
+	h.keys("ctrl+t")
 	h.typ("rows?")
 	h.keys("enter")
 	h.until("send 3 rows from local")
@@ -1139,7 +1139,7 @@ func TestAIQueuedPromptCancelled(t *testing.T) {
 	start := make(chan struct{})
 	h := newAIHarness(t, gatedConsent(start), nil)
 	h.openAI()
-	h.keys("tab")
+	h.keys("ctrl+t")
 	h.m.askYN("quit? y/N", "", nil, "")
 	h.send(palette.AskCmd{Question: "rows?", Answer: true})
 	close(start)
@@ -1167,7 +1167,7 @@ func TestAIExecuteSwitchReadAtConfirm(t *testing.T) {
 	h.send(tea.WindowSizeMsg{Width: 200, Height: winH})
 	h.send(palette.AIExecuteCmd{On: true})
 	h.openAI()
-	h.keys("tab")
+	h.keys("ctrl+t")
 	h.typ("delete")
 	h.keys("enter")
 	h.pump(func() bool { return len(f.Calls()) == 1 })
@@ -1188,7 +1188,7 @@ func TestAIEmptyAnswerIsNotHistory(t *testing.T) {
 	}}
 	h := newAIHarness(t, f, nil)
 	h.openAI()
-	h.keys("tab")
+	h.keys("ctrl+t")
 	h.askAI("one")
 	h.askAI("two")
 	if hist := f.Calls()[1].Req.(assistant.AnswerRequest).History; len(hist) != 0 {
@@ -1266,7 +1266,7 @@ func TestAIUnchangedReloadAsksForConsentAgain(t *testing.T) {
 	h.m.asst = memAssistant{}
 	h.send(tea.WindowSizeMsg{Width: 200, Height: winH})
 	h.openAI()
-	h.keys("tab")
+	h.keys("ctrl+t")
 	h.typ("one")
 	h.keys("enter")
 	h.until("send 2 rows from local")
@@ -1294,7 +1294,7 @@ func TestAIEntitiesRenderLiterally(t *testing.T) {
 	h := newAIHarness(t, f, nil)
 	h.send(tea.WindowSizeMsg{Width: 200, Height: winH})
 	h.openAI()
-	h.keys("tab")
+	h.keys("ctrl+t")
 	h.askAI("q")
 	raw := h.raw()
 	tuitest.NoInjectedControls(t, raw)
@@ -1383,7 +1383,7 @@ func TestAIStopOnTouchedConnection(t *testing.T) {
 	}}
 	h := newAIHarness(t, f, nil)
 	h.openAI()
-	h.keys("tab")
+	h.keys("ctrl+t")
 	h.typ("rows?")
 	h.keys("enter")
 	h.pump(func() bool { return h.m.ai.turn != nil && h.m.ai.turn.conns["other"] })
