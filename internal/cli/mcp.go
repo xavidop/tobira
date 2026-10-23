@@ -59,6 +59,28 @@ type MCPHTTP struct {
 	Token driver.Secret
 }
 
+// servingLine says what tobira mcp serves, how, and that it waits: the
+// one line a person sees after starting it by hand.
+func servingLine(expose, allowWrites []string, http bool) string {
+	names := make([]string, len(expose))
+	for i, n := range expose {
+		names[i] = query.EscapeControls(n)
+	}
+	writes := "read-only"
+	if len(allowWrites) > 0 {
+		w := make([]string, len(allowWrites))
+		for i, n := range allowWrites {
+			w[i] = query.EscapeControls(n)
+		}
+		writes = "writes allowed on " + strings.Join(w, ", ")
+	}
+	line := "tobira mcp: serving " + strings.Join(names, ", ") + " (" + writes + ")"
+	if http {
+		return line + " over HTTP"
+	}
+	return line + " over stdio; waiting for a client on stdin"
+}
+
 // errNothingExposed is the refusal to serve no connection at all.
 var errNothingExposed = errors.New("nothing is exposed: pass --expose or set mcp.expose")
 
@@ -147,6 +169,9 @@ func (a *app) runMCP(cmd *cobra.Command, _ []string) error {
 		return nil // a signal while starting: a clean shutdown, as below
 	}
 	log.Debug("mcp serving", "expose", pol.Expose, "allow_writes", pol.AllowWrites, "max_rows", pol.MaxRows, "send_rows", pol.SendRows)
+	// The client talks over stdout, so what is served is said on stderr:
+	// a server that waits on stdin in silence looks stuck.
+	_, _ = fmt.Fprintln(a.streams.Err, servingLine(pol.Expose, pol.AllowWrites, httpOpts != nil))
 	err = a.deps.ServeMCP(ctx, MCPOptions{
 		Manager: mgr, History: hist, Policy: pol, Version: a.info.Version,
 		Stdin: a.streams.In, Stdout: a.streams.Out, Logger: log,
