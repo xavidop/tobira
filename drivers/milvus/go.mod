@@ -5,7 +5,7 @@ go 1.26.10
 replace github.com/xavidop/tobira => ../..
 
 require (
-	github.com/milvus-io/milvus-proto/go-api/v2 v2.6.25
+	github.com/milvus-io/milvus-proto/go-api/v2 v2.6.26
 	github.com/milvus-io/milvus/client/v2 v2.6.5
 	github.com/moby/moby/api v1.56.1
 	github.com/testcontainers/testcontainers-go v0.44.0
