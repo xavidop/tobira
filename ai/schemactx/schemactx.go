@@ -41,6 +41,9 @@ const (
 type Context struct {
 	// Dialect and Kind come from the connection's driver.
 	Dialect, Kind string
+	// Syntax says what a query is for this dialect when its name alone
+	// would mislead a model (see QuerySyntax); "" for a SQL dialect.
+	Syntax string
 	// Text is the rendered context.
 	Text string
 	// Collections are the collections described in Text, as
@@ -80,7 +83,7 @@ func buildWith(ctx context.Context, mgr *session.Manager, scope assistant.Scope,
 		return Context{}, fmt.Errorf("unknown connection %q", scope.Conn)
 	}
 	st := mgr.State(scope.Conn)
-	out := Context{Dialect: st.Info.Dialect, Kind: string(st.Info.Kind)}
+	out := Context{Dialect: st.Info.Dialect, Kind: string(st.Info.Kind), Syntax: QuerySyntax(st.Info.Dialect)}
 	conn, err := mgr.Open(ctx, scope.Conn)
 	if err != nil {
 		return Context{}, err // the session redacts open errors

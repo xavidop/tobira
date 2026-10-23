@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"github.com/xavidop/tobira/ai/schemactx"
 	"os"
 	"path/filepath"
 	"strings"
@@ -175,5 +176,40 @@ func write(t *testing.T, path, body string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// The prompts that write queries tell the model what a query is for a
+// driver whose dialect name alone would mislead it, verbatim, quotes and
+// all; a SQL dialect adds nothing.
+func TestPromptsStateTheQueryForm(t *testing.T) {
+	h := newHarness(t, nil)
+	g, err := h.a.genkit(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := &flows{a: h.a, g: g, prompts: map[string]gai.Prompt{}, nonce: func() string { return "0123456789abcdef" }}
+	for _, name := range promptNames() {
+		f.prompts[name] = genkit.LookupPrompt(g, name)
+	}
+	note := schemactx.QuerySyntax("mongodb")
+	for _, name := range []string{promptAsk, promptAnswer, promptFixError} {
+		in := goldenInputs()[name]
+		in["dialect"], in["kind"], in["syntax"] = "mongodb", "document", note
+		msgs, _, err := f.render(context.Background(), name, in, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if sys := msgs[0].Text(); !strings.Contains(sys, "- A query for this database is "+note) {
+			t.Errorf("%s: the query form is missing or altered:\n%s", name, sys)
+		}
+		delete(in, "syntax")
+		msgs, _, err = f.render(context.Background(), name, in, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if sys := msgs[0].Text(); strings.Contains(sys, "A query for this database") {
+			t.Errorf("%s: a query form rendered with none given:\n%s", name, sys)
+		}
 	}
 }
