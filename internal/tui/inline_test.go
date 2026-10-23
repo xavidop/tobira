@@ -1085,3 +1085,55 @@ func TestApplyDriverReadOnlyRefusalIsWordedLikeTheEditor(t *testing.T) {
 		t.Fatalf("flash = %q", f)
 	}
 }
+
+// e and d work in the row detail as in the grid: e edits the field under
+// the detail's cursor, d marks the row, and the detail follows.
+func TestDetailEditsAndMarksTheRow(t *testing.T) {
+	h := newEditHarness(t, false, nil)
+	h.openColl("local", "tobira_people")
+	h.row(1)
+	h.keys("enter")
+	h.pump(func() bool { return h.m.det != nil })
+	cols := h.m.gr.Columns()
+	nameCol := -1
+	for i, c := range cols {
+		if c.Name == "name" {
+			nameCol = i
+		}
+	}
+	for range nameCol {
+		h.keys("down")
+	}
+	if col, ok := h.m.det.Column(); !ok || col != nameCol {
+		t.Fatalf("detail column = %d, %v; want %d", col, ok, nameCol)
+	}
+	h.editCell("Grace Edited")
+	h.drain(20 * time.Millisecond)
+	if h.m.det == nil {
+		t.Fatal("saving the edit closed the detail")
+	}
+	if n := h.m.pend.count(); n != 1 {
+		t.Fatalf("pending edits = %d", n)
+	}
+	if !strings.Contains(h.text(), "Grace Edited") {
+		t.Fatalf("the detail does not show the pending value:\n%s", h.text())
+	}
+	if col, _ := h.m.det.Column(); col != nameCol {
+		t.Fatalf("the detail lost its place: column %d", col)
+	}
+	h.keys("d")
+	if !strings.Contains(h.text(), "marked for deletion") {
+		t.Fatalf("the detail does not say the row is marked:\n%s", h.text())
+	}
+	h.keys("d")
+	if strings.Contains(h.text(), "marked for deletion") {
+		t.Fatalf("d again did not unmark the row:\n%s", h.text())
+	}
+	h.keys("esc")
+	if h.m.det != nil {
+		t.Fatal("esc did not close the detail")
+	}
+	if !strings.Contains(h.text(), "~") || !strings.Contains(h.text(), "1 pending") {
+		t.Fatalf("the grid does not show the edit made in the detail:\n%s", h.text())
+	}
+}

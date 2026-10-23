@@ -598,6 +598,9 @@ func (a *Model) key(k tea.KeyPressMsg) tea.Cmd {
 			a.dropDetail()
 			return nil
 		}
+		if cmd, ok := a.detailEditKey(k); ok {
+			return cmd
+		}
 		d, cmd := a.det.Update(k)
 		a.det = &d
 		return cmd
@@ -1451,7 +1454,11 @@ func (a *Model) gridPane(r rect) (title, content string) {
 		if t := a.activeTab(); t != nil {
 			crumb = query.EscapeControls(t.conn) + " ▸ " + t.label
 		}
-		return crumb + " · row detail", a.det.View(r.w, r.h)
+		title = crumb + " · row detail"
+		if a.detailDeleted() {
+			title += " · marked for deletion"
+		}
+		return title, a.det.View(r.w, r.h)
 	}
 	if conn, ok := a.failedConn(); ok {
 		return "connection " + query.EscapeControls(conn), a.failedView(conn, r.w)

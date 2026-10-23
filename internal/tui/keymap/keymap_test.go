@@ -244,8 +244,8 @@ func TestInlineEditingActions(t *testing.T) {
 				t.Errorf("%s: %q should match %s", m.Name, k.String(), a)
 			}
 		}
-		if d := m.Binding(Edit).Help().Desc; d != "edit cell" {
-			t.Errorf("%s: Edit help = %q, want %q", m.Name, d, "edit cell")
+		if d := m.Binding(Edit).Help().Desc; d != "edit cell (grid or row detail)" {
+			t.Errorf("%s: Edit help = %q, want %q", m.Name, d, "edit cell (grid or row detail)")
 		}
 	}
 }

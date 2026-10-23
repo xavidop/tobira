@@ -237,6 +237,38 @@ func (m *Model) scroll() {
 	m.off = max(m.off, 0)
 }
 
+// Column is the index of the column whose value the cursor is on: the root
+// of the selected node, or of the container a marker line belongs to.
+func (m Model) Column() (int, bool) {
+	if m.cursor < 0 || m.cursor >= len(m.lines) {
+		return 0, false
+	}
+	n := m.lines[m.cursor].n
+	if n == nil {
+		n = m.lines[m.cursor].of
+	}
+	for n != nil && n.parent != nil {
+		n = n.parent
+	}
+	for i, r := range m.roots {
+		if r != nil && r == n {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
+// Cursor is the index of the selected line.
+func (m Model) Cursor() int { return m.cursor }
+
+// WithCursor selects line i, clamped, and scrolls it into view: a rebuilt
+// detail keeps its place.
+func (m Model) WithCursor(i int) Model {
+	m.cursor = min(max(i, 0), max(len(m.lines)-1, 0))
+	m.scroll()
+	return m
+}
+
 func (m Model) selected() *tnode {
 	if m.cursor < 0 || m.cursor >= len(m.lines) {
 		return nil

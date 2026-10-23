@@ -44,9 +44,9 @@ The TUI has two keymaps, chosen with `tui.keymap` in the [config file](/docs/con
 | narrow column | `<` | `<` |
 | copy cell | `y` | `y` |
 | copy row as JSON | `Y` | `Y` |
-| edit cell | `e` | `e` |
+| edit cell (grid or row detail) | `e` | `e` |
 | insert a row | `i` | `i` |
-| mark / unmark the row for deletion | `d` | `d` |
+| mark / unmark the row for deletion (grid or row detail) | `d` | `d` |
 | set the edited cell to NULL | `ctrl+n` | `ctrl+n` |
 | save a multi-line cell edit | `ctrl+s` | `ctrl+s` |
 | find rows similar to this one (vector collections) | `S` | `S` |
