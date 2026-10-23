@@ -2,6 +2,13 @@
 
 All notable changes to tobira are listed here, newest first. Versions follow [Semantic Versioning](https://semver.org/). Each new release is added at the top, with notes generated from the commit messages.
 
+# [1.4.0](https://github.com/xavidop/tobira/compare/v1.3.0...v1.4.0) (2026-10-23)
+
+
+### Features
+
+* SSH tunnels, history clear and retention, Linux packages and Scoop ([#46](https://github.com/xavidop/tobira/issues/46)) ([d93c2b4](https://github.com/xavidop/tobira/commit/d93c2b47d7de7c98d7cdbaa4af77ea9d981002f8))
+
 # [1.3.0](https://github.com/xavidop/tobira/compare/v1.2.0...v1.3.0) (2026-10-23)
 
 
