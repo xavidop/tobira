@@ -249,8 +249,8 @@ var (
 		{keymap.ConnAdd, "add", ""}, {keymap.Palette, "cmd", ""}, {keymap.Quit, "quit", ""},
 	}
 	gridHints = []hint{
-		{keymap.Help, "help", ""}, {keymap.Open, "detail", ""}, {keymap.Filter, "filter", ""},
-		{keymap.Sort, "sort", ""}, {keymap.Edit, "edit", ""}, {keymap.EditorToggle, "query", ""},
+		{keymap.Help, "help", ""}, {keymap.Open, "detail", ""}, {keymap.Back, "sidebar", ""},
+		{keymap.Filter, "filter", ""}, {keymap.Sort, "sort", ""}, {keymap.Edit, "edit", ""}, {keymap.EditorToggle, "query", ""},
 		{keymap.Palette, "cmd", ""}, {keymap.Quit, "quit", ""}, {keymap.CopyCell, "copy", ""},
 		{keymap.Ask, "ask", ""},
 	}

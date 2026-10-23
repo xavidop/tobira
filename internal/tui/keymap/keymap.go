@@ -136,7 +136,7 @@ var descriptions = map[Action]string{
 	PageUp: "page up", PageDown: "page down", Top: "go to top", Bottom: "go to bottom",
 	Home: "first column", End: "last column",
 	FocusNext: "next pane", FocusPrev: "previous pane", Open: "open / row detail",
-	Back: "back / close", Filter: "filter rows", SidebarFilter: "filter sidebar", Sort: "cycle sort",
+	Back: "back / close; in the grid, focus the sidebar", Filter: "filter rows", SidebarFilter: "filter sidebar", Sort: "cycle sort",
 	WidenCol: "widen column", NarrowCol: "narrow column", CopyCell: "copy cell", CopyRow: "copy row as JSON",
 	Palette: "command palette", Help: "help", Quit: "quit", Cancel: "cancel a run, :apply, export or load (waits on a commit or rollback) / quit", Edit: "edit cell",
 	Ask: "open the AI panel / close it", FixError: "fix a failed run with AI (on its error tab)",

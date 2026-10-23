@@ -31,7 +31,7 @@ The TUI has two keymaps, chosen with `tui.keymap` in the [config file](/docs/con
 | next pane | `tab` | `tab` |
 | previous pane | `shift+tab` | `shift+tab` |
 | open / row detail | `enter` | `enter` |
-| back / close | `esc` | `esc` |
+| back / close; in the grid, focus the sidebar | `esc` | `esc` |
 | filter rows | `f` | `f` |
 | filter sidebar | `/` | `/` |
 | cycle sort | `s` | `s` |

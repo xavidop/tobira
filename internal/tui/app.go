@@ -657,6 +657,11 @@ func (a *Model) gridKey(k tea.KeyPressMsg) tea.Cmd {
 		}
 	}
 	switch {
+	case a.km.Matches(k, keymap.Back):
+		// esc walks back towards the sidebar: the AI panel and the editor
+		// hand the focus to the grid, the grid hands it on.
+		a.focus = focusSidebar
+		return nil
 	case a.km.Matches(k, keymap.Watch):
 		return a.watchCmd(palette.WatchCmd{})
 	case t != nil && t.watch == nil && t.state == tabFailed && a.km.Matches(k, keymap.FixError):

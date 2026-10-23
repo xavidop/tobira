@@ -245,6 +245,8 @@ func key(s string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyF1}
 	case "ctrl+c":
 		return tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}
+	case "ctrl+e":
+		return tea.KeyPressMsg{Code: 'e', Mod: tea.ModCtrl}
 	case "ctrl+home":
 		return tea.KeyPressMsg{Code: tea.KeyHome, Mod: tea.ModCtrl}
 	case "ctrl+end":
@@ -1456,5 +1458,35 @@ func TestAppKeysClearAPendingG(t *testing.T) {
 	h.keys("g", "g")
 	if r, _ := h.m.gr.Cursor(); r != 0 {
 		t.Fatalf("cursor = %d, a real gg goes to the top", r)
+	}
+}
+
+// esc walks the focus back towards the sidebar: editor to grid, grid to
+// sidebar. A live tail tab keeps esc for closing itself.
+func TestEscWalksBackToTheSidebar(t *testing.T) {
+	h := newHarness(t)
+	h.keys("enter")
+	h.until("main")
+	h.keys("down", "enter")
+	h.until("tobira_people")
+	h.keys("down", "enter")
+	h.until("Ada Lovelace")
+	if h.m.focus != focusGrid {
+		t.Fatalf("focus after opening a collection = %v", h.m.focus)
+	}
+	h.keys("ctrl+e")
+	if h.m.focus != focusEditor {
+		t.Fatalf("focus after ctrl+e = %v", h.m.focus)
+	}
+	h.keys("esc")
+	if h.m.focus != focusGrid {
+		t.Fatalf("esc in the editor left the focus on %v", h.m.focus)
+	}
+	h.keys("esc")
+	if h.m.focus != focusSidebar {
+		t.Fatalf("esc in the grid left the focus on %v", h.m.focus)
+	}
+	if !strings.Contains(h.text(), "Ada Lovelace") {
+		t.Fatal("esc in the grid closed the collection")
 	}
 }
