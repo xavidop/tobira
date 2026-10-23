@@ -94,11 +94,17 @@ do not tell a user otherwise.
 ## Install
 
 - macOS: `brew install xavidop/tap/tobira`. It is a Homebrew cask, so it is macOS only.
-- Linux, macOS or Windows: an archive (amd64/arm64, `.tar.gz`, `.zip` on Windows) from
-  https://github.com/xavidop/tobira/releases, checked against `checksums.txt`. There is no Linux
-  Homebrew formula.
-- With Go 1.26+: `go install github.com/xavidop/tobira/cmd/tobira@latest`.
-- From a clone: `make build`; the binary lands at `cmd/tobira/tobira`.
+- Windows: `scoop bucket add xavidop https://github.com/xavidop/scoop-bucket`, then
+  `scoop install tobira`.
+- Linux: a `.deb`, `.rpm` or `.apk` (amd64/arm64) from https://github.com/xavidop/tobira/releases,
+  installed with `dpkg -i`, `rpm -i` or `apk add --allow-untrusted`. It includes the bash, zsh and
+  fish completions. There is no Linux Homebrew formula and no package repository.
+- Linux, macOS or Windows: an archive (amd64/arm64, `.tar.gz`, `.zip` on Windows) from the same
+  releases page, checked against `checksums.txt`; the archive carries the completions too.
+- From a clone: `make build`; the binary lands at `cmd/tobira/tobira`. `go install ...@latest`
+  does not work: the CLI module depends on the sibling modules of its checkout.
+- Shell completion: `tobira completion bash|zsh|fish|powershell` prints the script; the
+  Linux packages install it for bash, zsh and fish.
 
 After installing, `tobira doctor` checks the setup.
 
@@ -250,10 +256,13 @@ column, vectors cut to 8 numbers.
 
 Every `tobira query` run and every TUI editor run (including `--explain`, `:explain`, runs the
 read-only guard refused, and cancelled runs) is logged to `$XDG_STATE_HOME/tobira/history.db` or `history.path`
-(default `~/.local/state/tobira/history.db`, mode 0600, last 10,000 entries) with passwords and
-credentials masked. `tobira history [--conn N] [--search TEXT] [--limit N] [--format F]` lists it,
-newest first (`--limit 0` means every retained entry). Queries run by the AI assistant's tools are
-recorded with source `ai` and MCP calls with source `mcp` (`--mcp`, `--source`). Inline `:apply` writes and browsing are not recorded. Docs:
+(default `~/.local/state/tobira/history.db`, mode 0600, last 10,000 entries or `history.max_entries`)
+with passwords and credentials masked. `tobira history [--conn N] [--search TEXT] [--limit N] [--format F]`
+lists it, newest first (`--limit 0` means every retained entry). Queries run by the AI assistant's
+tools are recorded with source `ai` and MCP calls with source `mcp` (`--mcp`, `--source`). Inline
+`:apply` writes and browsing are not recorded. `tobira history clear [--conn N] [--source S] [--mcp]
+[--search TEXT] --yes` removes matching entries (every entry without a filter) and compacts the
+file; without `--yes` it asks on a terminal and refuses otherwise. Docs:
 https://xavidop.github.io/tobira/docs/history/.
 
 ## Managing connections
@@ -321,6 +330,14 @@ connections:
     password: env:LOCAL_PG_PASSWORD
     read_only: true
 ```
+
+A database behind a bastion takes an `ssh:` block on the connection: `host` (or `host:port`),
+`user`, `key` (a private key file; else the agent and `~/.ssh/id_*`), `passphrase` and `password`
+(secret references), `known_hosts` (default `~/.ssh/known_hosts`; the host key must already be
+there, tobira never trusts on first use: `ssh-keyscan -H host >> ~/.ssh/known_hosts`). tobira
+forwards a loopback port to the DSN's host and port, so the DSN must be `scheme://host:port/...`
+with one host; replica sets, `+srv` and file databases cannot be tunnelled. `~/.ssh/config` is not
+read. Docs: https://xavidop.github.io/tobira/docs/connections/ssh/.
 
 Password precedence: `TOBIRA_CONN_<NAME>_PASSWORD`, then the `password:` reference, then the DSN.
 References compiled in: `env:`, `file://`, dotenv and `keyring:` (the OS keyring; store a password with

@@ -19,6 +19,7 @@ import (
 	"github.com/xavidop/tobira/internal/export"
 	"github.com/xavidop/tobira/internal/history"
 	"github.com/xavidop/tobira/internal/query"
+	"github.com/xavidop/tobira/internal/sshtunnel"
 )
 
 type queryFlags struct {
@@ -95,7 +96,7 @@ func (a *app) runQuery(cmd *cobra.Command, args []string, f queryFlags) error {
 	}
 	defer closeLog()
 
-	cfg, err := a.resolve(ctx, cmd, args[0])
+	cfg, tc, err := a.resolve(ctx, cmd, args[0])
 	if err != nil {
 		return err
 	}
@@ -112,11 +113,12 @@ func (a *app) runQuery(cmd *cobra.Command, args []string, f queryFlags) error {
 		defer cancel()
 	}
 	cfg.Logger = log // driver warnings go to the --debug log
-	conn, err := a.deps.Registry.Open(ctx, cfg)
+	conn, tun, err := sshtunnel.OpenConn(ctx, a.deps.Registry, cfg, tc)
 	if err != nil {
 		log.Error("open failed", "kind", driver.KindName(err))
 		return scrub(connectError(err), cfg)
 	}
+	defer func() { _ = tun.Close() }()
 	defer func() { _ = conn.Close() }()
 
 	hist := a.openHistory(ctx, log, a.historyConfig(cmd))
@@ -315,27 +317,32 @@ func (a *app) format(name string) (query.Format, error) {
 	return f, nil
 }
 
-// resolve turns the connection argument into a driver.ConnConfig.
-func (a *app) resolve(ctx context.Context, cmd *cobra.Command, arg string) (driver.ConnConfig, error) {
+// resolve turns the connection argument into a driver.ConnConfig and the
+// SSH tunnel it goes through (nil for a direct connection or an ad-hoc DSN).
+func (a *app) resolve(ctx context.Context, cmd *cobra.Command, arg string) (driver.ConnConfig, *sshtunnel.Config, error) {
 	if isDSN(arg) {
-		return driver.ConnConfig{DSN: arg}, nil
+		return driver.ConnConfig{DSN: arg}, nil, nil
 	}
 	cfg, err := a.loadConfig(cmd)
 	if err != nil {
-		return driver.ConnConfig{}, err
+		return driver.ConnConfig{}, nil, err
 	}
 	conn, ok := cfg.Find(arg)
 	if !ok {
-		return driver.ConnConfig{}, unknownConnection(cfg, arg)
+		return driver.ConnConfig{}, nil, unknownConnection(cfg, arg)
 	}
 	cc, err := a.deps.Resolver.ConnConfig(ctx, conn)
-	if err != nil {
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return driver.ConnConfig{}, err
+	if err == nil {
+		var tc *sshtunnel.Config
+		tc, err = a.deps.Resolver.SSH(ctx, conn)
+		if err == nil {
+			return cc, tc, nil
 		}
-		return driver.ConnConfig{}, &exitError{code: exitConnection, err: err}
 	}
-	return cc, nil
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return driver.ConnConfig{}, nil, err
+	}
+	return driver.ConnConfig{}, nil, &exitError{code: exitConnection, err: err}
 }
 
 // unknownConnection is the usage error for a name that is not configured. arg

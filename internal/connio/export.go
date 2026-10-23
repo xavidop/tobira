@@ -36,6 +36,18 @@ func Export(conns []config.Connection) (out []config.Connection, notes []string)
 			c.DSN = dsn
 			notes = append(notes, c.Name+": removed the password from the DSN")
 		}
+		if s := c.SSH; s != nil {
+			s = s.Clone()
+			if s.Passphrase != "" && config.ValidateLoadedPasswordRef(s.Passphrase) != nil {
+				s.Passphrase = ""
+				notes = append(notes, c.Name+": dropped an ssh passphrase that is not a secret reference")
+			}
+			if s.Password != "" && config.ValidateLoadedPasswordRef(s.Password) != nil {
+				s.Password = ""
+				notes = append(notes, c.Name+": dropped an ssh password that is not a secret reference")
+			}
+			c.SSH = s
+		}
 		if len(c.Options) > 0 {
 			keys := make([]string, 0, len(c.Options))
 			for k := range c.Options {
@@ -71,6 +83,19 @@ type exported struct {
 	ReadOnly bool              `json:"read_only,omitempty"`
 	Tags     []string          `json:"tags,omitempty"`
 	Options  map[string]string `json:"options,omitempty"`
+	SSH      *exportedSSH      `json:"ssh,omitempty"`
+}
+
+// exportedSSH is a connection's ssh block in the JSON export, empty keys
+// left out.
+type exportedSSH struct {
+	Host       string `json:"host"`
+	Port       int    `json:"port,omitempty"`
+	User       string `json:"user,omitempty"`
+	Key        string `json:"key,omitempty"`
+	Passphrase string `json:"passphrase,omitempty"`
+	Password   string `json:"password,omitempty"`
+	KnownHosts string `json:"known_hosts,omitempty"`
 }
 
 // MarshalJSON renders conns as {"connections": [...]}, the JSON form of
@@ -80,10 +105,15 @@ func MarshalJSON(conns []config.Connection) ([]byte, error) {
 		Connections []exported `json:"connections"`
 	}{Connections: []exported{}}
 	for _, c := range conns {
-		doc.Connections = append(doc.Connections, exported{
+		e := exported{
 			Name: c.Name, Driver: c.Driver, DSN: c.DSN, Password: c.Password,
 			Color: c.Color, ReadOnly: c.ReadOnly, Tags: c.Tags, Options: c.Options,
-		})
+		}
+		if s := c.SSH; s != nil {
+			e.SSH = &exportedSSH{Host: s.Host, Port: s.Port, User: s.User, Key: s.Key,
+				Passphrase: s.Passphrase, Password: s.Password, KnownHosts: s.KnownHosts}
+		}
+		doc.Connections = append(doc.Connections, e)
 	}
 	b, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {

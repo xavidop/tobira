@@ -126,7 +126,7 @@ func ValidateConnection(c Connection, drivers []driver.Info) error {
 			return errors.New("options must not contain control characters")
 		}
 	}
-	return nil
+	return validateSSH(c.SSH)
 }
 
 // ValidateName checks a connection name: letters, digits, '.', '_' and '-'.
@@ -714,6 +714,24 @@ func render(c Connection, dash int) ([]string, error) {
 			opts.Content = append(opts.Content, scalar(k), scalar(c.Options[k]))
 		}
 		add("options", opts)
+	}
+	if s := c.SSH; s != nil {
+		m2 := &yaml.Node{Kind: yaml.MappingNode}
+		add2 := func(k, v string) {
+			if v != "" {
+				m2.Content = append(m2.Content, scalar(k), scalar(v))
+			}
+		}
+		add2("host", s.Host)
+		if s.Port != 0 {
+			m2.Content = append(m2.Content, scalar("port"), &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: strconv.Itoa(s.Port)})
+		}
+		add2("user", s.User)
+		add2("key", s.Key)
+		add2("passphrase", s.Passphrase)
+		add2("password", s.Password)
+		add2("known_hosts", s.KnownHosts)
+		add("ssh", m2)
 	}
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)

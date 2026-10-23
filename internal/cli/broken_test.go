@@ -88,13 +88,13 @@ func TestConnectionsListIncludesBroken(t *testing.T) {
 		t.Fatalf("rows = %v, err = %v\n%s", rows, err, out)
 	}
 	for i, r := range rows {
-		for _, k := range []string{"name", "driver", "dsn", "read_only", "tags", "color", "password_ref", "line", "broken"} {
+		for _, k := range []string{"name", "driver", "dsn", "ssh", "read_only", "tags", "color", "password_ref", "line", "broken"} {
 			if _, ok := r[k]; !ok {
 				t.Errorf("row %d lacks %q: %v", i, k, r)
 			}
 		}
-		if len(r) != 9 {
-			t.Errorf("row %d has %d keys, want 9: %v", i, len(r), r)
+		if len(r) != 10 {
+			t.Errorf("row %d has %d keys, want 10: %v", i, len(r), r)
 		}
 	}
 	if rows[0]["broken"] != "" || rows[0]["line"] != float64(0) {

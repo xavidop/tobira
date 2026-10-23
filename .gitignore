@@ -31,6 +31,9 @@ site/.astro/
 .playwright-mcp/
 *.screenshot.png
 
+# Shell completions scripts/completions.sh writes for GoReleaser.
+/completions/
+
 # Binaries from a plain `go build` in the repo root or cmd/tobira.
 /cmd/tobira/tobira
 /tobira

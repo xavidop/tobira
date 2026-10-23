@@ -32,7 +32,7 @@ tobira doctor [--no-ping] [--online] [--timeout D]
 | Section | Checks |
 |---|---|
 | `config` | The file parses. Each broken entry fails; each warning warns. A connection whose DSN carries a password warns, with a hint to move it to a password reference. |
-| `connections` | One row each. An unknown driver fails; every other connection is opened read-only and pinged. |
+| `connections` | One row each. An unknown driver fails; a connection with an `ssh:` block fails when its DSN cannot be forwarded or its key or `known_hosts` file is missing; every other connection is opened read-only and pinged, through the tunnel when it has one. |
 | `refs` | Every secret ref: connection passwords, `ai.api_key` and `mcp.token`. |
 | `drivers` | The built-in drivers. |
 | `plugins` | The discovered plugins with their paths, and those not used because a built-in driver or an earlier directory has the name. |

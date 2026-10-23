@@ -13,6 +13,7 @@ import (
 	"github.com/xavidop/tobira/internal/config"
 	"github.com/xavidop/tobira/internal/secrets"
 	"github.com/xavidop/tobira/internal/session"
+	"github.com/xavidop/tobira/internal/sshtunnel"
 	"github.com/xavidop/tobira/plugin/host"
 )
 
@@ -86,6 +87,14 @@ func (r *doctorRun) checkRefs() []doctorCheck {
 		if c.Password != "" {
 			items = append(items, refItem{name: "connection " + c.Name, what: fmt.Sprintf("connection %q password", c.Name),
 				ref: c.Password, override: secrets.EnvName(c.Name)})
+		}
+		if c.SSH != nil {
+			for field, ref := range map[string]string{"ssh.passphrase": c.SSH.Passphrase, "ssh.password": c.SSH.Password} {
+				if ref != "" {
+					items = append(items, refItem{name: "connection " + c.Name + " " + field,
+						what: fmt.Sprintf("connection %q %s", c.Name, field), ref: ref})
+				}
+			}
 		}
 	}
 	if r.cfg.AI != nil && r.cfg.AI.APIKey != "" {
@@ -170,10 +179,12 @@ func (r *doctorRun) checkConnections() []doctorCheck {
 			out[i].Status, out[i].Detail = statusFail, fmt.Sprintf("unknown driver %q (tobira driver list shows them)", c.Driver)
 		case drv == "":
 			out[i].Status, out[i].Detail = statusFail, fmt.Sprintf("unknown driver: no driver handles the scheme %q", driver.Scheme(c.DSN))
+		case c.SSH != nil && r.sshProblem(c) != "":
+			out[i].Status, out[i].Detail = statusFail, r.sshProblem(c)
 		case r.f.noPing:
-			out[i].Status, out[i].Detail = statusOK, fmt.Sprintf("not pinged (--no-ping); driver %s", drv)
+			out[i].Status, out[i].Detail = statusOK, fmt.Sprintf("not pinged (--no-ping); driver %s%s", drv, sshNote(c))
 		default:
-			out[i].Detail = drv
+			out[i].Detail = drv + sshNote(c)
 			ping = append(ping, i)
 		}
 	}
@@ -183,6 +194,33 @@ func (r *doctorRun) checkConnections() []doctorCheck {
 		out[i].Status, out[i].Detail = r.ping(mgr, conns[i], out[i].Detail)
 	})
 	return out
+}
+
+// sshNote says which SSH server a connection goes through, or "".
+func sshNote(c config.Connection) string {
+	if c.SSH == nil {
+		return ""
+	}
+	return " via ssh " + c.SSH.Host
+}
+
+// sshProblem checks what an SSH tunnel needs before any network: a DSN
+// the tunnel can forward, a key file that exists when one is set, and a
+// known_hosts file that exists. It is "" when all is well.
+func (r *doctorRun) sshProblem(c config.Connection) string {
+	if _, err := sshtunnel.Target(c.DSN); err != nil {
+		return err.Error()
+	}
+	tc := sshtunnel.Config{KeyFile: c.SSH.Key, KnownHosts: c.SSH.KnownHosts, Home: r.a.deps.Home, Getenv: r.a.getenv}
+	if p := tc.KeyPath(); p != "" {
+		if _, err := os.Stat(p); err != nil {
+			return "ssh.key: " + errText(err)
+		}
+	}
+	if _, err := os.Stat(tc.KnownHostsPath()); err != nil {
+		return "ssh known_hosts: " + errText(err) + " (add the server with: ssh-keyscan -H <host> >> ~/.ssh/known_hosts)"
+	}
+	return ""
 }
 
 // ping opens c read-only and pings it, bounded by --timeout even when the

@@ -14,7 +14,7 @@ is SQLite, PostgreSQL, MongoDB or a vector store. **Every database, one terminal
 ## Quick start
 
 ```sh
-brew install xavidop/tap/tobira        # macOS; or: go install github.com/xavidop/tobira/cmd/tobira@latest
+brew install xavidop/tap/tobira        # macOS; Windows: scoop install tobira; Linux: a .deb, .rpm or .apk
 tobira query sqlite:./demo.db "select sqlite_version()"
 tobira connect sqlite:./demo.db        # open the terminal UI
 ```

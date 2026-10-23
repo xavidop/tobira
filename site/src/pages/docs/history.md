@@ -16,7 +16,9 @@ never recalled.
 A SQLite file at `$XDG_STATE_HOME/tobira/history.db` (`~/.local/state/tobira/history.db` when
 `XDG_STATE_HOME` is unset, on every OS), or wherever the
 [`history.path`](/docs/configuration/#the-history-section) config key points. The directory is
-created with mode 0700 and the file with 0600. It keeps the last 10,000 entries: recording a new one removes the oldest beyond that.
+created with mode 0700 and the file with 0600. It keeps the last 10,000 entries, or as many as
+[`history.max_entries`](/docs/configuration/#the-history-section) says (1 to 1,000,000):
+recording a new one removes the oldest beyond that.
 
 History is best effort. If the file cannot be opened or written, `tobira query` and the editor
 behave exactly as without it; in the editor, `↑` and `ctrl+r` are then off. Listing never creates
@@ -80,3 +82,17 @@ Flags are in the [CLI reference](/docs/cli/history/). Each entry has these field
 
 With `--format json` a listing is one `{"columns", "rows", "stats"}` document like `tobira query`
 prints; with no entries it is `[]`.
+
+## Clearing it
+
+```sh
+tobira history clear                               # every entry; asks you to type yes
+tobira history clear --search "hunter2" --yes      # only the entries whose query contains the text
+tobira history clear --conn local-pg --source ai   # the AI assistant's runs on one connection
+```
+
+`tobira history clear` removes every entry, or only those matching the same `--conn`, `--source`,
+`--mcp` and `--search` filters the listing takes. Use it when a secret ended up in a query's own
+text, which masking does not catch. The file is compacted afterwards, so the removed text is gone
+from the disk, not just hidden. Without a terminal, `--yes` is required. Flags are in the
+[CLI reference](/docs/cli/history/#clear).

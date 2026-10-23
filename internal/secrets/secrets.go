@@ -13,6 +13,7 @@ import (
 	"github.com/xavidop/mamori"
 	"github.com/xavidop/tobira/driver"
 	"github.com/xavidop/tobira/internal/config"
+	"github.com/xavidop/tobira/internal/sshtunnel"
 )
 
 // Resolver resolves connection passwords. Zero-value fields default to
@@ -267,4 +268,34 @@ func errorClass(err error) string {
 		return "invalid ref"
 	}
 	return "unknown error"
+}
+
+// SSH builds the tunnel config for c's ssh: block, resolving its
+// passphrase and password refs as ConnConfig resolves the password. It is
+// nil, nil for a direct connection. Errors name the connection and the
+// field, the ref scheme and a coarse failure class, never a value.
+func (r Resolver) SSH(ctx context.Context, c config.Connection) (*sshtunnel.Config, error) {
+	s := c.SSH
+	if s == nil {
+		return nil, nil
+	}
+	getenv := r.Getenv
+	if getenv == nil {
+		getenv = os.Getenv
+	}
+	out := &sshtunnel.Config{Host: s.Host, Port: s.Port, User: s.User, KeyFile: s.Key, KnownHosts: s.KnownHosts, Getenv: getenv}
+	for _, f := range []struct {
+		name, ref string
+		dst       *driver.Secret
+	}{{"ssh.passphrase", s.Passphrase, &out.Passphrase}, {"ssh.password", s.Password, &out.Password}} {
+		if f.ref == "" {
+			continue
+		}
+		sec, err := r.Secret(ctx, fmt.Sprintf("connection %q: %s", c.Name, f.name), f.ref)
+		if err != nil {
+			return nil, err
+		}
+		*f.dst = sec
+	}
+	return out, nil
 }

@@ -79,13 +79,15 @@ type Connection struct {
 	ReadOnly bool              `yaml:"read_only"`
 	Tags     []string          `yaml:"tags"`
 	Options  map[string]string `yaml:"options"`
+	// SSH is the ssh: block, nil when the connection is direct.
+	SSH *SSH `yaml:"ssh"`
 }
 
-var connectionKeyList = []string{"name", "driver", "dsn", "password", "color", "read_only", "tags", "options"}
+var connectionKeyList = []string{"name", "driver", "dsn", "password", "color", "read_only", "tags", "options", "ssh"}
 
 var connectionKeys = map[string]bool{
 	"name": true, "driver": true, "dsn": true, "password": true,
-	"color": true, "read_only": true, "tags": true, "options": true,
+	"color": true, "read_only": true, "tags": true, "options": true, "ssh": true,
 }
 
 // Load reads and validates the config file at path. A missing file yields an
@@ -187,6 +189,13 @@ func loadConnection(n *yaml.Node, seen map[string]bool) (Connection, error) {
 	if keyErr != nil {
 		return c, keyErr
 	}
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		if n.Content[i].Value == "ssh" && n.Content[i+1].Tag != "!!null" {
+			if err := checkSSHKeys(n.Content[i+1]); err != nil {
+				return c, err
+			}
+		}
+	}
 	return c, validate(c, seen)
 }
 
@@ -223,6 +232,8 @@ func decodeFields(n *yaml.Node) (Connection, error) {
 			c.Tags = one.Tags
 		case "options":
 			c.Options = one.Options
+		case "ssh":
+			c.SSH = one.SSH
 		}
 	}
 	if bad == "" {
@@ -276,6 +287,7 @@ func safeFields(c Connection) Connection {
 			p.Options[k] = v
 		}
 	}
+	p.SSH = safeSSH(c.SSH)
 	return p
 }
 
@@ -403,7 +415,7 @@ func validate(c Connection, seen map[string]bool) error {
 			return errors.New("password must be a secret reference (env:NAME, file:///path, dotenv://path#KEY, keyring:NAME)")
 		}
 	}
-	return nil
+	return validateSSH(c.SSH)
 }
 
 // FindAt returns the loaded connection whose entry starts on line.

@@ -2,10 +2,16 @@
 #
 # The root module is a library consumed via `go get` at the git tag. GoReleaser
 # builds and releases the one shipped binary, the tobira CLI (cmd/tobira, its
-# own module), with checksums, SBOMs, a changelog and a Homebrew cask.
+# own module), with checksums, SBOMs, a changelog, a Homebrew cask, a Scoop
+# manifest and deb, rpm and apk packages.
 version: 2
 
 project_name: tobira
+
+before:
+  hooks:
+    # The shell completions go into the archives and the Linux packages.
+    - ./scripts/completions.sh
 
 builds:
   - id: tobira
@@ -33,6 +39,48 @@ archives:
     format_overrides:
       - goos: windows
         formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+      - completions/*
+
+# Linux packages, attached to the GitHub Release next to the archives. They
+# install the binary and the shell completions; no package repository is
+# published, so a user downloads the file for their distribution.
+nfpms:
+  - id: tobira
+    ids: [tobira]
+    package_name: tobira
+    file_name_template: "tobira_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    vendor: Xavier Portilla Edo
+    maintainer: Xavier Portilla Edo <xavi_tb@hotmail.com>
+    homepage: "https://xavidop.github.io/tobira/"
+    description: Every database, one terminal.
+    license: MIT
+    formats: [deb, rpm, apk]
+    bindir: /usr/bin
+    section: utils
+    contents:
+      - src: ./completions/tobira.bash
+        dst: /usr/share/bash-completion/completions/tobira
+        file_info:
+          mode: 0644
+      - src: ./completions/tobira.fish
+        dst: /usr/share/fish/vendor_completions.d/tobira.fish
+        file_info:
+          mode: 0644
+      - src: ./completions/tobira.zsh
+        dst: /usr/share/zsh/vendor-completions/_tobira
+        file_info:
+          mode: 0644
+      - src: ./LICENSE
+        dst: /usr/share/doc/tobira/copyright
+        file_info:
+          mode: 0644
+    deb:
+      lintian_overrides:
+        - statically-linked-binary
+        - changelog-file-missing-in-native-package
 
 checksum:
   name_template: "checksums.txt"
@@ -76,9 +124,24 @@ release:
   name_template: "tobira {{ .Tag }}"
   footer: |
     ---
-    **Install:** `brew install xavidop/tap/tobira`
+    **Install:** `brew install xavidop/tap/tobira` (macOS), `scoop install tobira` (Windows, after
+    `scoop bucket add xavidop https://github.com/xavidop/scoop-bucket`), or the `.deb`, `.rpm` or
+    `.apk` package below (Linux).
 
     **Docs:** https://xavidop.github.io/tobira/
+
+# The Scoop manifest is committed to xavidop/scoop-bucket, which needs a token
+# that can write there (see release.yml). Scoop reads the Windows zip archives.
+scoops:
+  - name: tobira
+    ids: [tobira]
+    repository:
+      owner: xavidop
+      name: scoop-bucket
+      token: "{{ .Env.SCOOP_BUCKET_TOKEN }}"
+    homepage: "https://xavidop.github.io/tobira/"
+    description: "Every database, one terminal"
+    license: MIT
 
 # The tap lives in a different repository, so this block needs its own token
 # (see release.yml, which falls back to GITHUB_TOKEN when the secret is absent).

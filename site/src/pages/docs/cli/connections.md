@@ -32,7 +32,7 @@ tobira connections import --from dbeaver|pgpass|tableplus|file [path] [--apply] 
 ### list
 
 Prints a table on a terminal and a JSON array otherwise. Every JSON element has the same keys:
-`name`, `driver`, `dsn` (password masked), `read_only`, `tags`, `color`, `password_ref`, `line` and
+`name`, `driver`, `dsn` (password masked), `ssh` (`user@host`, or empty), `read_only`, `tags`, `color`, `password_ref`, `line` and
 `broken`. A key that does not apply is empty or zero. An entry that did not load has a non-empty
 `broken` (its error) and its `line`, and a `BROKEN` column in the table. Names are masked like a
 DSN, so a DSN typed into the name field never shows its password.

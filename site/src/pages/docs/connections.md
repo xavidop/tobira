@@ -73,6 +73,13 @@ tobira connections rm local-pg --yes
 entry with no usable name or a duplicated one. [`tobira connections`](/docs/cli/connections/) has
 every subcommand, flag and exit code.
 
+## SSH tunnels
+
+A database behind a bastion host gets an `ssh:` block on its connection: tobira opens the SSH
+session, forwards a loopback port to the host and port the DSN names and hands the driver the
+loopback address. Keys, the agent or a password authenticate, and host keys are checked against
+`known_hosts`. See [SSH tunnels](/docs/connections/ssh/).
+
 ## Importing connections
 
 `tobira connections export` prints your connections without passwords, and
