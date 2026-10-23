@@ -986,6 +986,7 @@ func (a *Model) openCollection(msg sidebar.OpenCollectionMsg) tea.Cmd {
 	a.kv = isKeyValue(st.Info, msg.Type)
 	a.gr.SetFormat(cellFormat(st.Info, msg.Type))
 	a.focus = focusGrid
+	a.active = 0 // the browse tab, which a run tab may have hidden
 	a.dropDetail()
 	a.help = false
 	a.filterText = ""

@@ -865,3 +865,26 @@ func TestExitRecordsTheCancelledRun(t *testing.T) {
 		t.Fatalf("history after the exit = %+v, running %v", es, h.m.running != nil)
 	}
 }
+
+// Opening a collection from the sidebar shows it, even while a run tab is
+// active: the browse tab comes back to the front.
+func TestOpeningACollectionShowsTheBrowseTab(t *testing.T) {
+	h := newQueryHarness(t, nil)
+	h.openEditor("select count(*) as n from tobira_people")
+	h.runUntilDone(keyF5)
+	if h.m.active != 1 {
+		t.Fatalf("active tab after the run = %d", h.m.active)
+	}
+	h.keys("esc", "shift+tab") // editor → grid → sidebar
+	if h.m.focus != focusSidebar {
+		t.Fatalf("focus = %v", h.m.focus)
+	}
+	h.keys("enter") // open the selected collection again
+	h.until("Ada Lovelace")
+	if h.m.active != 0 || h.m.focus != focusGrid {
+		t.Fatalf("active tab = %d focus = %v after opening a collection", h.m.active, h.m.focus)
+	}
+	if len(h.m.tabs) != 1 {
+		t.Fatalf("the run tab was lost: %d tabs", len(h.m.tabs))
+	}
+}
