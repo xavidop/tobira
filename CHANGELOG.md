@@ -2,6 +2,13 @@
 
 All notable changes to tobira are listed here, newest first. Versions follow [Semantic Versioning](https://semver.org/). Each new release is added at the top, with notes generated from the commit messages.
 
+## [1.1.1](https://github.com/xavidop/tobira/compare/v1.1.0...v1.1.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* pin load times so golden frames do not depend on machine speed ([#37](https://github.com/xavidop/tobira/issues/37)) ([4fe9d1a](https://github.com/xavidop/tobira/commit/4fe9d1a79a7bc5fc5977f7a2be561c3bdf3d138a)), closes [#34](https://github.com/xavidop/tobira/issues/34) [#35](https://github.com/xavidop/tobira/issues/35)
+
 # [1.1.0](https://github.com/xavidop/tobira/compare/v1.0.1...v1.1.0) (2026-10-22)
 
 
