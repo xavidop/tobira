@@ -2,6 +2,13 @@
 
 All notable changes to tobira are listed here, newest first. Versions follow [Semantic Versioning](https://semver.org/). Each new release is added at the top, with notes generated from the commit messages.
 
+## [1.4.1](https://github.com/xavidop/tobira/compare/v1.4.0...v1.4.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* **release:** build the completions outside the workspace so the tree stays clean ([d5571dc](https://github.com/xavidop/tobira/commit/d5571dcd88d615ecb99770be97a860375f0ed5cb))
+
 # [1.4.0](https://github.com/xavidop/tobira/compare/v1.3.0...v1.4.0) (2026-10-23)
 
 
