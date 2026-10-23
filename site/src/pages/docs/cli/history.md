@@ -6,13 +6,15 @@ title: tobira history
 # List the query history
 
 `tobira history` lists the queries that `tobira query`, the terminal UI's editor, the AI
-assistant's tools and MCP clients ran, newest first. What is stored, where, for how long and how
-credentials are masked is on the [Query history](/docs/history/) page.
+assistant's tools and MCP clients ran, newest first, and `tobira history clear` removes entries.
+What is stored, where, for how long and how credentials are masked is on the
+[Query history](/docs/history/) page.
 
 ```sh
 tobira history
 tobira history --conn local-pg --search "from orders" --limit 20
 tobira history --mcp --format json
+tobira history clear --search "hunter2" --yes
 ```
 
 ## tobira history
@@ -31,7 +33,20 @@ Each entry has `at`, `conn`, `source` (`cli`, `tui`, `ai` or `mcp`), `ok`, `rows
 | `--source <src>` | all | Only entries from one source: `cli`, `tui`, `ai` or `mcp`. Any other value is a usage error. |
 | `--mcp` | | Only calls made by MCP clients, with the client's name. The same as `--source mcp`. |
 | `--search <text>` | | Only entries whose query contains the text, ignoring case (non-ASCII text too). |
-| `--limit <n>` | `100` | Maximum entries; `0` lists every retained entry (up to 10,000). A negative value is a usage error. |
+| `--limit <n>` | `100` | Maximum entries; `0` lists every retained entry (up to [`history.max_entries`](/docs/configuration/#the-history-section), 10,000 by default). A negative value is a usage error. |
 | `--format <fmt>` | `table` on a terminal, else `json` | Same formats as `tobira query`. |
 
 With no history yet it prints nothing (`[]` for `json`) and exits 0.
+
+### clear
+
+```sh
+tobira history clear [--conn <name>] [--source cli|tui|ai|mcp] [--mcp] [--search <text>] [--yes]
+```
+
+Removes every entry, or only the entries that match the filters, which mean the same as for the
+listing: `--conn`, `--source`, `--mcp` and `--search`. On a terminal it shows how many entries
+match and asks you to type `yes`; without a terminal `--yes` is required, and without it nothing
+is removed (exit 1). It prints `removed <n> entries`, and `removed 0 entries` when nothing
+matches or there is no history file yet, which it never creates. The file is compacted
+afterwards, so a removed query is gone from the disk as well.

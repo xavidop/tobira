@@ -117,18 +117,40 @@ func TestReadmeShape(t *testing.T) {
 }
 
 // TestReadmeInstallMatchesTheRelease keeps the Install section true to
-// .goreleaser.yaml: brew and go install are both named, a cask is called
-// macOS only, and every platform the archives build is named.
+// .goreleaser.yaml: brew, Scoop and the releases page are named, a cask is
+// called macOS only, each package format the release builds is named, every
+// platform the archives build is named, and `go install` is not offered (the
+// CLI module replaces its sibling modules with the checkout, which
+// `go install pkg@version` refuses).
 func TestReadmeInstallMatchesTheRelease(t *testing.T) {
 	install := readmeSection(t, repoFile(t, "README.md"), "Install")
 	release := repoFile(t, ".goreleaser.yaml")
-	for _, want := range []string{"brew install xavidop/tap/tobira", "go install github.com/xavidop/tobira/cmd/tobira@latest", "releases"} {
+	for _, want := range []string{"brew install xavidop/tap/tobira", "scoop install tobira", "releases"} {
 		if !strings.Contains(install, want) {
 			t.Errorf("README.md Install does not mention %q", want)
 		}
 	}
+	for _, page := range []string{"README.md", "site/src/pages/docs/install.md", "site/src/pages/docs/index.md"} {
+		if strings.Contains(repoFile(t, page), "go install github.com/xavidop/tobira") {
+			t.Errorf("%s offers go install, which cannot build the CLI module", page)
+		}
+	}
 	if strings.Contains(release, "homebrew_casks:") && !strings.Contains(install, "macOS only") {
 		t.Error("README.md Install: the release publishes a Homebrew cask, so brew must be called macOS only")
+	}
+	if strings.Contains(release, "scoops:") != strings.Contains(install, "Scoop") {
+		t.Error("README.md Install and .goreleaser.yaml disagree about Scoop")
+	}
+	formats := regexp.MustCompile(`(?s)nfpms:.*?formats: \[([^\]]*)\]`).FindStringSubmatch(release)
+	if strings.Contains(release, "nfpms:") && formats == nil {
+		t.Fatal(".goreleaser.yaml has nfpms but no formats list")
+	}
+	if formats != nil {
+		for _, f := range strings.Split(formats[1], ",") {
+			if f = strings.TrimSpace(f); !strings.Contains(install, "."+f) {
+				t.Errorf("README.md Install does not mention the .%s package the release builds", f)
+			}
+		}
 	}
 	goos := regexp.MustCompile(`(?m)^\s*goos: \[([^\]]*)\]`).FindStringSubmatch(release)
 	if goos == nil {

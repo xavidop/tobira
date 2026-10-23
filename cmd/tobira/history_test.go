@@ -370,3 +370,84 @@ func TestHistoryRecordsExplainAndRefusals(t *testing.T) {
 		t.Fatalf("entries = %+v", got)
 	}
 }
+
+func TestHistoryClear(t *testing.T) {
+	bin := buildBinary(t)
+	env := isolatedEnv(t)
+	db := filepath.Join(t.TempDir(), "h.db")
+	dsn := "sqlite:" + db
+	for _, q := range []string{"select 'needle-zx81' as a", "select 2", "select 3"} {
+		if _, code := run(t, bin, env, "query", dsn, q); code != 0 {
+			t.Fatalf("query %q: %d", q, code)
+		}
+	}
+
+	// No terminal and no --yes: refused, nothing removed.
+	if out, errOut, code := runBoth(t, bin, env, "history", "clear"); code != 1 || !strings.Contains(errOut, "--yes") {
+		t.Fatalf("clear without --yes: exit %d, stdout %q, stderr %q; want exit 1 naming --yes", code, out, errOut)
+	}
+	if n := len(listHistory(t, bin, env)); n != 3 {
+		t.Fatalf("a refused clear removed entries: %d left, want 3", n)
+	}
+
+	out, code := run(t, bin, env, "history", "clear", "--yes", "--search", "NEEDLE-zx81")
+	if code != 0 || strings.TrimSpace(out) != "removed 1 entry" {
+		t.Fatalf("filtered clear: exit %d, out %q", code, out)
+	}
+	left := listHistory(t, bin, env)
+	if len(left) != 2 || left[0].Query != "select 3" || left[1].Query != "select 2" {
+		t.Fatalf("after the filtered clear: %+v", left)
+	}
+	raw, err := os.ReadFile(historyPath(t, env))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(raw, []byte("needle-zx81")) {
+		t.Error("the cleared query is still in the file's raw bytes (not compacted)")
+	}
+
+	out, code = run(t, bin, env, "history", "clear", "--yes")
+	if code != 0 || strings.TrimSpace(out) != "removed 2 entries" {
+		t.Fatalf("clear all: exit %d, out %q", code, out)
+	}
+	if n := len(listHistory(t, bin, env)); n != 0 {
+		t.Errorf("%d entries left after clear, want none", n)
+	}
+	out, code = run(t, bin, env, "history", "clear", "--yes")
+	if code != 0 || strings.TrimSpace(out) != "removed 0 entries" {
+		t.Errorf("clear of an empty log: exit %d, out %q", code, out)
+	}
+
+	// A missing file is an empty history: nothing to remove, and no file made.
+	fresh := isolatedEnv(t)
+	out, code = run(t, bin, fresh, "history", "clear", "--yes")
+	if code != 0 || strings.TrimSpace(out) != "removed 0 entries" {
+		t.Errorf("clear without a file: exit %d, out %q", code, out)
+	}
+	if _, err := os.Stat(historyPath(t, fresh)); err == nil {
+		t.Error("clearing created the history file")
+	}
+	if _, errOut, code := runBoth(t, bin, env, "history", "clear", "--yes", "--source", "nope"); code != 1 || !strings.Contains(errOut, "--source must be one of") {
+		t.Errorf("bad --source: exit %d, stderr %q", code, errOut)
+	}
+}
+
+func TestHistoryMaxEntriesConfig(t *testing.T) {
+	bin := buildBinary(t)
+	env := writeConfig(t, isolatedEnv(t), "history:\n  max_entries: 3\n")
+	db := filepath.Join(t.TempDir(), "h.db")
+	dsn := "sqlite:" + db
+	for _, q := range []string{"select 1", "select 2", "select 3", "select 4", "select 5"} {
+		if _, code := run(t, bin, env, "query", dsn, q); code != 0 {
+			t.Fatalf("query %q: %d", q, code)
+		}
+	}
+	got := listHistory(t, bin, env, "--limit", "0")
+	if len(got) != 3 || got[0].Query != "select 5" || got[2].Query != "select 3" {
+		t.Fatalf("kept %+v, want the last 3", got)
+	}
+	// A config that cannot load warns once and lists with the default cap.
+	if _, errOut, code := runBoth(t, bin, writeConfig(t, isolatedEnv(t), "history:\n  max_entries: 0\n"), "history"); code != 0 || !strings.Contains(errOut, "history.max_entries: must be from 1 to 1000000") {
+		t.Errorf("max_entries 0: exit %d, stderr %q; want exit 0 and a warning naming the key", code, errOut)
+	}
+}

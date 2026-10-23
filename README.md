@@ -46,10 +46,14 @@ and in CI.
 ## Install
 
 - **Homebrew (macOS):** `brew install xavidop/tap/tobira`. This is a Homebrew cask, so it is macOS only.
+- **Scoop (Windows):** `scoop bucket add xavidop https://github.com/xavidop/scoop-bucket`, then
+  `scoop install tobira`.
+- **Linux packages:** a `.deb`, `.rpm` or `.apk` for amd64 or arm64 from
+  [GitHub Releases](https://github.com/xavidop/tobira/releases), installed with `dpkg -i`,
+  `rpm -i` or `apk add --allow-untrusted`. They include the shell completions.
 - **Release binaries (Linux, macOS, Windows):** download an archive for amd64 or arm64 from
   [GitHub Releases](https://github.com/xavidop/tobira/releases), check it against
   `checksums.txt`, unpack it and put `tobira` on your `PATH`.
-- **Go:** `go install github.com/xavidop/tobira/cmd/tobira@latest` (Go 1.26 or newer).
 
 To build from source, see [CONTRIBUTING.md](CONTRIBUTING.md). After you install, run
 `tobira doctor` to check your setup. More options are on the
@@ -231,7 +235,7 @@ tobira query <connection|dsn> [q]    run a query and print the result (--output 
 tobira watch <connection|dsn> <target>   stream change events as JSON lines (--max, --timeout)
 tobira ask [connection] <question>   ask the AI assistant (--run runs the proposal read-only, --answer answers)
 tobira mcp --expose <names>          serve connections to an MCP client (--http for HTTP)
-tobira history                       list the queries tobira ran, newest first (--source, --mcp)
+tobira history [clear]               list the queries tobira ran, newest first (--source, --mcp), or remove them
 tobira driver list|info|install      list drivers and plugins, inspect one, install a plugin (--sha256)
 tobira doctor                        check the config, connections, secrets, plugins, AI and MCP (--no-ping)
 tobira version                       print the version, commit and build date

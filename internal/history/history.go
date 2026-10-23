@@ -32,8 +32,9 @@ const (
 )
 
 const (
-	// maxEntries is how many entries Record keeps.
-	maxEntries = 10000
+	// DefaultMaxEntries is how many entries Record keeps unless Open is
+	// given MaxEntries.
+	DefaultMaxEntries = 10000
 	// defaultLimit is the List limit when Filter.Limit is not positive.
 	defaultLimit = 100
 	// recordTimeout bounds one Record call (insert plus trim).
@@ -95,6 +96,17 @@ type Store struct {
 	hasClient bool
 	// schema is the schema version SchemaVersion reports.
 	schema int
+	// maxEntries is how many entries Record keeps and List can return.
+	maxEntries int
+}
+
+// MaxEntries is how many entries the store keeps: the MaxEntries option
+// given to Open, else DefaultMaxEntries. It is 0 for a nil Store.
+func (s *Store) MaxEntries() int {
+	if s == nil {
+		return 0
+	}
+	return s.maxEntries
 }
 
 // SetLogger sets where List reports rows it had to skip (at debug level).
@@ -158,7 +170,14 @@ func Resolve(configured string, getenv func(string) string, home string) (string
 // OpenOption changes how Open prepares the file.
 type OpenOption func(*openOptions)
 
-type openOptions struct{ keepDirMode bool }
+type openOptions struct {
+	keepDirMode bool
+	maxEntries  int
+}
+
+// MaxEntries sets how many entries Record keeps (the history.max_entries
+// config key); n < 1 means DefaultMaxEntries.
+func MaxEntries(n int) OpenOption { return func(o *openOptions) { o.maxEntries = n } }
 
 // KeepDirMode leaves the mode of an existing parent directory alone, for a
 // configured history.path that may sit in a directory the user shares
@@ -209,7 +228,10 @@ func Open(ctx context.Context, reg *driver.Registry, path string, opts ...OpenOp
 	if err != nil {
 		return nil, fmt.Errorf("history: open: %w", err)
 	}
-	s := &Store{conn: conn}
+	s := &Store{conn: conn, maxEntries: DefaultMaxEntries}
+	if o.maxEntries > 0 {
+		s.maxEntries = o.maxEntries
+	}
 	if err := s.exec(ctx, schema); err != nil {
 		_ = conn.Close()
 		return nil, fmt.Errorf("history: create schema: %w", err)
@@ -247,7 +269,7 @@ func OpenReadOnly(ctx context.Context, reg *driver.Registry, path string) (*Stor
 	if err != nil {
 		return nil, fmt.Errorf("history: open: %w", err)
 	}
-	s := &Store{conn: conn}
+	s := &Store{conn: conn, maxEntries: DefaultMaxEntries}
 	cols, err := s.columns(ctx, true)
 	if err != nil {
 		_ = conn.Close()
@@ -358,8 +380,8 @@ func (s *Store) exec(ctx context.Context, text string, params ...driver.Value) e
 }
 
 // Record stores e after masking its query text with driver.RedactMessage and
-// cc, then trims the log to the last 10,000 entries. It is bounded to two
-// seconds. The caller decides what to do with the error; history failures
+// cc, then trims the log to its last MaxEntries entries. It is bounded to
+// two seconds. The caller decides what to do with the error; history failures
 // must never fail the user's command.
 func (s *Store) Record(ctx context.Context, e Entry, cc driver.ConnConfig) error {
 	if s == nil {
@@ -393,7 +415,7 @@ func (s *Store) Record(ctx context.Context, e Entry, cc driver.ConnConfig) error
 	if err != nil {
 		return fmt.Errorf("history: record: %w", err)
 	}
-	if err := s.exec(ctx, "DELETE FROM history WHERE id <= (SELECT MAX(id) - ? FROM history)", driver.Int(maxEntries)); err != nil {
+	if err := s.exec(ctx, "DELETE FROM history WHERE id <= (SELECT MAX(id) - ? FROM history)", driver.Int(int64(s.maxEntries))); err != nil {
 		return fmt.Errorf("history: trim: %w", err)
 	}
 	return nil
@@ -453,7 +475,7 @@ func (s *Store) List(ctx context.Context, f Filter) ([]Entry, error) {
 	if limit <= 0 {
 		limit = defaultLimit
 	}
-	limit = min(limit, maxEntries)
+	limit = min(limit, s.maxEntries)
 
 	// LIKE folds ASCII case only. A non-ASCII term is matched in Go instead,
 	// over every retained entry of the connection.
@@ -486,7 +508,7 @@ func (s *Store) List(ctx context.Context, f Filter) ([]Entry, error) {
 	sqlLimit := limit
 	switch {
 	case goSearch != "":
-		sqlLimit = maxEntries
+		sqlLimit = s.maxEntries
 	case f.Search != "":
 		where = append(where, `query LIKE ? ESCAPE '\'`)
 		params = append(params, driver.String("%"+likeEscaper.Replace(f.Search)+"%"))
@@ -582,6 +604,67 @@ func decode(r driver.Row) (Entry, error) {
 		}
 	}
 	return e, nil
+}
+
+// Clear deletes the entries matching f (its Limit is ignored) and returns
+// how many it deleted. An empty Filter clears the whole log. The file is
+// compacted afterwards, so a cleared secret is gone from the disk as well.
+func (s *Store) Clear(ctx context.Context, f Filter) (int64, error) {
+	if s == nil {
+		return 0, nil
+	}
+	n, err := s.clear(ctx, f)
+	if err != nil {
+		return 0, fmt.Errorf("history: clear: %w", err)
+	}
+	if n > 0 {
+		if err := s.exec(ctx, "VACUUM"); err != nil {
+			return n, fmt.Errorf("history: compact: %w", err)
+		}
+	}
+	return n, nil
+}
+
+func (s *Store) clear(ctx context.Context, f Filter) (int64, error) {
+	if f.Conn == "" && f.Source == "" && len(f.ExcludeSources) == 0 && f.Search == "" {
+		rs, err := s.conn.Query(ctx, driver.Query{Text: "SELECT COUNT(*) FROM history"})
+		if err != nil {
+			return 0, err
+		}
+		rows, _, err := driver.Collect(ctx, rs, 0)
+		if err != nil {
+			return 0, err
+		}
+		var n int64
+		if len(rows) > 0 && len(rows[0]) > 0 {
+			n, _ = rows[0][0].AsInt()
+		}
+		if n == 0 {
+			return 0, nil
+		}
+		return n, s.exec(ctx, "DELETE FROM history")
+	}
+	// A filtered clear removes exactly what the same filter lists, search
+	// semantics included (non-ASCII text is matched in Go).
+	f.Limit = s.maxEntries
+	entries, err := s.List(ctx, f)
+	if err != nil {
+		return 0, err
+	}
+	const batch = 500
+	for start := 0; start < len(entries); start += batch {
+		end := min(start+batch, len(entries))
+		marks := make([]string, 0, end-start)
+		params := make([]driver.Value, 0, end-start)
+		for _, e := range entries[start:end] {
+			marks = append(marks, "?")
+			params = append(params, driver.Int(e.ID))
+		}
+		if err := s.exec(ctx, "DELETE FROM history WHERE id IN ("+strings.Join(marks, ", ")+")", params...); err != nil {
+			return 0, err
+		}
+	}
+	return int64(len(entries)), nil
 }
 
 // Close releases the store.

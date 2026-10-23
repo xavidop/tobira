@@ -159,13 +159,15 @@ starts and isolates plugins is on [Plugin host](/docs/plugin-protocol/host/) and
 ```yaml
 history:
   path: ~/.local/state/tobira/history.db   # where the query history is kept
+  max_entries: 10000                       # how many entries it keeps
 ```
 
-Optional. A value that is not a string and an unknown key under `history:` are load errors.
+Optional. A value of the wrong type and an unknown key under `history:` are load errors.
 
 | Key | Default | Meaning |
 |---|---|---|
 | `path` | `$XDG_STATE_HOME/tobira/history.db`, else `~/.local/state/tobira/history.db` | Where the [query history](/docs/history/) is kept. It must be absolute or start with `~` or an environment variable (`$VAR`, `${VAR}`). A relative path is a load error. |
+| `max_entries` | `10000` | How many entries the history keeps: recording a new one removes the oldest beyond that. An integer from 1 to 1,000,000; anything else is a load error. `tobira history clear` removes entries by hand. |
 
 - A variable that is not set, or is empty, is an error: `tobira history` refuses to run and
   `tobira doctor` reports a fail. Commands that only record a query skip the history instead.

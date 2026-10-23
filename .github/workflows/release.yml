@@ -6,7 +6,8 @@ name: Release
 #   1. semantic-release analyzes commits on main, decides the next version,
 #      updates CHANGELOG.md, and creates + pushes the git tag (vX.Y.Z).
 #   2. GoReleaser builds the tobira CLI binary and creates the GitHub Release
-#      with the artifacts, checksums, and SBOM for that tag.
+#      with the archives, deb/rpm/apk packages, checksums and SBOM for that
+#      tag, and updates the Homebrew cask and the Scoop manifest.
 #   3. SLSA provenance is generated for the released artifacts.
 #
 # Run it by hand with a tag (workflow_dispatch, input `tag`) to publish a tag
@@ -134,6 +135,9 @@ jobs:
           # including artifacts that are otherwise fine. With the fallback, a
           # missing secret degrades to exactly today's behaviour instead.
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN || secrets.GITHUB_TOKEN }}
+          # The Scoop manifest goes to xavidop/scoop-bucket the same way. A PAT
+          # that covers both repositories can be set as HOMEBREW_TAP_TOKEN alone.
+          SCOOP_BUCKET_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN || secrets.HOMEBREW_TAP_TOKEN || secrets.GITHUB_TOKEN }}
 
       # 3. Export the artifact hashes for the provenance job.
       - name: Export artifact hashes

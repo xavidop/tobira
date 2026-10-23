@@ -16,6 +16,9 @@ type History struct {
 	// environment variables ($VAR, ${VAR}), which history.Resolve expands.
 	// Empty means the default location.
 	Path string
+	// MaxEntries is how many entries the history keeps; 0 means the
+	// default (history.DefaultMaxEntries).
+	MaxEntries int
 }
 
 // HistoryPath is the raw history.path value, or "" when the file sets none
@@ -27,7 +30,20 @@ func (c *Config) HistoryPath() string {
 	return c.History.Path
 }
 
-var historyKeyList = []string{"path"}
+// HistoryMaxEntries is the history.max_entries value, or 0 when the file
+// sets none (or c is nil), which means the default.
+func (c *Config) HistoryMaxEntries() int {
+	if c == nil || c.History == nil {
+		return 0
+	}
+	return c.History.MaxEntries
+}
+
+// MaxHistoryEntries bounds history.max_entries: a larger log would make
+// listing and trimming slow for no gain.
+const MaxHistoryEntries = 1_000_000
+
+var historyKeyList = []string{"path", "max_entries"}
 
 // loadHistory decodes and validates the history: section, returning the
 // line of the offending node on error. Errors never quote a value or an
@@ -39,7 +55,7 @@ func loadHistory(n *yaml.Node) (*History, int, error) {
 	h := &History{}
 	for i := 0; i+1 < len(n.Content); i += 2 {
 		k, v := n.Content[i], n.Content[i+1]
-		if k.Value != "path" {
+		if !slices.Contains(historyKeyList, k.Value) {
 			if g := guessKeyIn(k.Value, historyKeyList); g != "" {
 				return nil, k.Line, fmt.Errorf("unknown history key (did you mean %q?)", g)
 			}
@@ -48,13 +64,35 @@ func loadHistory(n *yaml.Node) (*History, int, error) {
 		if v.Tag == "!!null" {
 			continue
 		}
-		p, err := historyPathValue(v)
-		if err != nil {
-			return nil, v.Line, fmt.Errorf("history.path: %w", err)
+		switch k.Value {
+		case "path":
+			p, err := historyPathValue(v)
+			if err != nil {
+				return nil, v.Line, fmt.Errorf("history.path: %w", err)
+			}
+			h.Path = p
+		case "max_entries":
+			m, err := historyMaxEntriesValue(v)
+			if err != nil {
+				return nil, v.Line, fmt.Errorf("history.max_entries: %w", err)
+			}
+			h.MaxEntries = m
 		}
-		h.Path = p
 	}
 	return h, 0, nil
+}
+
+// historyMaxEntriesValue checks a history.max_entries value: an integer from
+// 1 to MaxHistoryEntries.
+func historyMaxEntriesValue(v *yaml.Node) (int, error) {
+	var m int
+	if v.Kind != yaml.ScalarNode || v.Tag != "!!int" || v.Decode(&m) != nil {
+		return 0, errors.New("must be an integer")
+	}
+	if m < 1 || m > MaxHistoryEntries {
+		return 0, fmt.Errorf("must be from 1 to %d", MaxHistoryEntries)
+	}
+	return m, nil
 }
 
 // historyPathValue checks a history.path value: a non-empty string without

@@ -79,3 +79,40 @@ func TestUnknownTopLevelKeyWarns(t *testing.T) {
 		t.Error("a warning quotes the unknown key")
 	}
 }
+
+func TestHistoryMaxEntries(t *testing.T) {
+	for body, want := range map[string]int{
+		"history:\n  max_entries: 500\n":                      500,
+		"history:\n  path: /x/h.db\n  max_entries: 1000000\n": 1000000,
+		"history:\n  max_entries: 1\n":                        1,
+		"history:\n  path: /x/h.db\n":                         0,
+		"history:\n  max_entries:\n":                          0,
+	} {
+		c, err := Load(writeTemp(t, body))
+		if err != nil {
+			t.Fatalf("%q: %v", body, err)
+		}
+		if c.HistoryMaxEntries() != want {
+			t.Errorf("%q: HistoryMaxEntries = %d, want %d", body, c.HistoryMaxEntries(), want)
+		}
+	}
+	var nilCfg *Config
+	if nilCfg.HistoryMaxEntries() != 0 {
+		t.Error("a nil Config has no history.max_entries")
+	}
+	for name, tt := range map[string]struct{ body, want string }{
+		"not an integer": {"history:\n  max_entries: many\n", "history.max_entries: must be an integer"},
+		"a float":        {"history:\n  max_entries: 1.5\n", "history.max_entries: must be an integer"},
+		"zero":           {"history:\n  max_entries: 0\n", "history.max_entries: must be from 1 to 1000000"},
+		"negative":       {"history:\n  max_entries: -1\n", "history.max_entries: must be from 1 to 1000000"},
+		"too large":      {"history:\n  max_entries: 1000001\n", "history.max_entries: must be from 1 to 1000000"},
+		"misspelt":       {"history:\n  max_entrie: 5\n", `did you mean "max_entries"`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := Load(writeTemp(t, tt.body))
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("err = %v, want it to contain %q", err, tt.want)
+			}
+		})
+	}
+}

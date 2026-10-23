@@ -123,4 +123,4 @@ demo: ## Record site/public/demo.gif with vhs (needs vhs, ttyd and ffmpeg)
 	@vhs demo.tape
 
 clean: ## Remove build artifacts
-	@rm -rf dist site/dist site/.astro
+	@rm -rf dist completions site/dist site/.astro

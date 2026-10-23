@@ -806,3 +806,117 @@ func TestRecordKeepsSecretNamedJSONFields(t *testing.T) {
 		}
 	}
 }
+
+// TestMaxEntriesOption: Record trims to the configured cap, List caps its
+// limit there, and MaxEntries reports it (the default without the option).
+func TestMaxEntriesOption(t *testing.T) {
+	s, d, _ := newStore(t)
+	if s.MaxEntries() != history.DefaultMaxEntries {
+		t.Errorf("MaxEntries = %d, want the default %d", s.MaxEntries(), history.DefaultMaxEntries)
+	}
+	var nilStore *history.Store
+	if nilStore.MaxEntries() != 0 {
+		t.Error("a nil store has no cap")
+	}
+
+	reg := driver.NewRegistry()
+	if err := reg.Add(d); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "history.db")
+	capped, err := history.Open(context.Background(), reg, path, history.MaxEntries(250))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = capped.Close() }()
+	if capped.MaxEntries() != 250 {
+		t.Fatalf("MaxEntries = %d, want 250", capped.MaxEntries())
+	}
+	if err := capped.Record(context.Background(), history.Entry{Conn: "c", Source: history.SourceCLI, Query: "select 1"}, driver.ConnConfig{}); err != nil {
+		t.Fatal(err)
+	}
+	trim := d.queries[len(d.queries)-1]
+	if !strings.HasPrefix(trim.Text, "DELETE FROM history WHERE id <= (SELECT MAX(id) - ?") || trim.Params[0].String() != "250" {
+		t.Errorf("trim = %s %v, want the cap of 250", trim.Text, trim.Params)
+	}
+	if _, err := capped.List(context.Background(), history.Filter{Limit: 5000}); err != nil {
+		t.Fatal(err)
+	}
+	list := d.queries[len(d.queries)-1]
+	if got := list.Params[len(list.Params)-1].String(); got != "250" {
+		t.Errorf("list limit = %s, want capped at 250", got)
+	}
+}
+
+func TestClearWholeLog(t *testing.T) {
+	s, d, _ := newStore(t)
+	d.rows = []driver.Row{{driver.Int(3)}}
+	n, err := s.Clear(context.Background(), history.Filter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 3 {
+		t.Errorf("cleared %d, want 3", n)
+	}
+	var texts []string
+	for _, q := range d.queries {
+		texts = append(texts, strings.TrimSpace(q.Text))
+	}
+	last3 := texts[len(texts)-3:]
+	if last3[0] != "SELECT COUNT(*) FROM history" || last3[1] != "DELETE FROM history" || last3[2] != "VACUUM" {
+		t.Errorf("statements = %q, want count, delete and vacuum", last3)
+	}
+
+	// An empty log deletes and compacts nothing.
+	d.rows = []driver.Row{{driver.Int(0)}}
+	before := len(d.queries)
+	if n, err := s.Clear(context.Background(), history.Filter{}); err != nil || n != 0 {
+		t.Fatalf("empty: n=%d err=%v", n, err)
+	}
+	if got := len(d.queries) - before; got != 1 {
+		t.Errorf("an empty clear ran %d statements, want only the count", got)
+	}
+	var nilStore *history.Store
+	if n, err := nilStore.Clear(context.Background(), history.Filter{}); n != 0 || err != nil {
+		t.Errorf("nil store: n=%d err=%v", n, err)
+	}
+}
+
+// TestClearFilteredDeletesWhatListMatches: a filtered clear removes exactly
+// the ids the same filter lists, non-ASCII search included, then compacts.
+func TestClearFilteredDeletesWhatListMatches(t *testing.T) {
+	s, d, _ := newStore(t)
+	row := func(id int64, q string) driver.Row {
+		return driver.Row{driver.Int(id), driver.String("2026-01-02T03:04:05Z"), driver.String("c"), driver.String("cli"),
+			driver.String(q), driver.Int(1), driver.Int(0), driver.Int(0), driver.Null()}
+	}
+	d.rows = []driver.Row{row(3, "select 'ÉCOLE'"), row(2, "select 1"), row(1, "select 'école'")}
+	n, err := s.Clear(context.Background(), history.Filter{Conn: "c", Search: "école", Limit: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Errorf("cleared %d, want the 2 matches (Limit is ignored)", n)
+	}
+	q := d.queries[len(d.queries)-2]
+	if q.Text != "DELETE FROM history WHERE id IN (?, ?)" || q.Params[0].String() != "3" || q.Params[1].String() != "1" {
+		t.Errorf("delete = %s %v", q.Text, q.Params)
+	}
+	if last := d.queries[len(d.queries)-1].Text; last != "VACUUM" {
+		t.Errorf("last statement = %s, want VACUUM", last)
+	}
+	sel := d.queries[len(d.queries)-3]
+	if !strings.Contains(sel.Text, "conn = ?") || sel.Params[0].String() != "c" {
+		t.Errorf("the clear did not list with the filter: %s %v", sel.Text, sel.Params)
+	}
+
+	// Nothing matching: no delete, no compaction.
+	d.rows = nil
+	before := len(d.queries)
+	if n, err := s.Clear(context.Background(), history.Filter{Search: "nope"}); err != nil || n != 0 {
+		t.Fatalf("no match: n=%d err=%v", n, err)
+	}
+	if got := len(d.queries) - before; got != 1 {
+		t.Errorf("a clear with no match ran %d statements, want only the select", got)
+	}
+}
