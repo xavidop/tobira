@@ -48,7 +48,7 @@ connections:
 | `options` | Driver-specific settings, passed to the driver. Most drivers take their settings from the DSN instead and refuse any option. See [Driver options](#driver-options). |
 | `color` | Sidebar colour in the [TUI](/docs/tui/): `red`, `green`, `yellow`, `orange`, `cyan`, `blue` or `magenta`. |
 | `tags` | Free-form labels, shown by `tobira connections list`. |
-| `ssh` | Reach the database through an SSH tunnel. A mapping with the keys below; see [SSH tunnels](/docs/connections/#ssh-tunnels). |
+| `ssh` | Reach the database through an SSH tunnel. A mapping with the keys below; see [SSH tunnels](/docs/connections/ssh/). |
 
 The `ssh` keys:
 

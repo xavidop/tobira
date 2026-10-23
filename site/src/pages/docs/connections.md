@@ -75,58 +75,10 @@ every subcommand, flag and exit code.
 
 ## SSH tunnels
 
-A database behind a bastion host gets an `ssh:` block. tobira opens an SSH session to that host,
-listens on a loopback port and forwards it to the host and port the DSN names, as seen from the SSH
-server. The driver connects to the loopback port and knows nothing about SSH.
-
-```yaml
-connections:
-  - name: prod-pg
-    dsn: postgres://app@db.internal:5432/app
-    password: env:PROD_PG_PASSWORD
-    ssh:
-      host: bastion.example.com      # host or host:port; port 22 by default
-      user: deploy                   # the SSH login; your user name by default
-      key: ~/.ssh/id_ed25519         # a private key file; see "How it authenticates"
-      passphrase: env:KEY_PASS       # a secret reference, only for an encrypted key
-```
-
-**Which DSNs work.** The DSN must be of the form `scheme://[user[:password]@]host[:port]/...` and
-name one host, which is what every network driver takes (PostgreSQL, MySQL, SQL Server, Oracle,
-ClickHouse, MongoDB, Redis, Cassandra, Neo4j, Qdrant, Elasticsearch and the other HTTP drivers). A
-port can be left out for the common schemes; otherwise add it. A `mongodb+srv://` DSN, a DSN
-that lists several hosts (a replica set or a cluster) and a file database such as SQLite cannot be
-tunnelled: a replica set or a cluster redirects the client to its members' real addresses, which
-the tunnel does not reach. Managed cloud services need no tunnel.
-
-**How it authenticates.** In this order: `key`, if set (with `passphrase` when the file is
-encrypted); the SSH agent at `$SSH_AUTH_SOCK`; without a `key`, the default keys
-`~/.ssh/id_ed25519`, `~/.ssh/id_ecdsa` and `~/.ssh/id_rsa` that exist; and `password`, a secret
-reference, if set. `passphrase` and `password` take the same references as a connection
-`password`, never a value. An SSH config file (`~/.ssh/config`) is not read: name the host, port
-and user in the block.
-
-**Host keys are checked, never trusted on first use.** The server's key must be in
-`~/.ssh/known_hosts` (or the file `known_hosts:` names). If you have connected to the host with
-`ssh` before, it is. Otherwise add it once:
-
-```sh
-ssh-keyscan -H bastion.example.com >> ~/.ssh/known_hosts
-```
-
-An unknown host, a changed key and a missing file are each a clear error that says so. tobira
-never writes to `known_hosts`.
-
-**TLS through a tunnel.** The driver sees `127.0.0.1`, so a driver that turns TLS on only for
-remote hosts connects in clear inside the tunnel, which SSH encrypts end to end. A DSN that asks
-for TLS still gets it, but a mode that checks the certificate against the host name
-(`sslmode=verify-full`, say) fails, because the name is now `127.0.0.1`: use `verify-ca`, or the
-driver's option for the expected server name. See [Network security](/docs/security/network/).
-
-`tobira doctor` checks the block before any network: the DSN can be forwarded, the key file
-exists and `known_hosts` exists; with a ping, it opens the connection through the tunnel.
-`tobira connections list` shows `user@host` in an `SSH` column, and the export and import keep the
-block. The connection form in the TUI does not edit it: write the block in the file.
+A database behind a bastion host gets an `ssh:` block on its connection: tobira opens the SSH
+session, forwards a loopback port to the host and port the DSN names and hands the driver the
+loopback address. Keys, the agent or a password authenticate, and host keys are checked against
+`known_hosts`. See [SSH tunnels](/docs/connections/ssh/).
 
 ## Importing connections
 

@@ -33,7 +33,7 @@ qdrant://qdrant.internal:6334?tls=false&allow_plaintext=1
   driver's cloud endpoints.
 - **Azure Cosmos DB** also sends signed requests only to the account endpoint (or, for an Azure
   account, its regional endpoints in the same zone), whatever the server advertises.
-- **An [SSH tunnel](/docs/connections/#ssh-tunnels) ends on a loopback port**, so the driver sees
+- **An [SSH tunnel](/docs/connections/ssh/) ends on a loopback port**, so the driver sees
   `127.0.0.1` and the loopback rules apply: a driver that turns TLS on only for remote hosts
   connects in clear inside the tunnel, which SSH encrypts. TLS the DSN asks for is still used,
   but a certificate check against the host name fails, since the name is now `127.0.0.1`. The SSH

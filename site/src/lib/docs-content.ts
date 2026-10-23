@@ -69,6 +69,7 @@ const ORDER = [
   "/docs/history",
   "/docs/connections",
   "/docs/connections/import",
+  "/docs/connections/ssh",
   "/docs/secrets",
   "/docs/configuration",
   "/docs/cli",

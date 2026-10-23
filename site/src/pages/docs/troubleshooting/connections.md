@@ -52,7 +52,7 @@ without any network.
   passphrase as a secret reference.
 - **`the DSN must be of the form scheme://host:port/...`**, **`names several hosts`** or
   **`has no port`**: the tunnel forwards to exactly one host and port. See
-  [which DSNs work](/docs/connections/#ssh-tunnels).
+  [which DSNs work](/docs/connections/ssh/#which-dsns-work).
 - **The database refuses the certificate** (`verify-full`, host name mismatch): the driver now
   connects to `127.0.0.1`. Use `verify-ca` or the driver's server-name option.
 
