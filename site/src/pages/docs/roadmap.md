@@ -7,7 +7,6 @@ title: What's next
 
 Ideas for future versions of tobira. None of them has a date.
 
-- **Graph databases.** Drivers for graph databases.
 - **More secret providers**, such as 1Password (`op://`), AWS (`aws-sm://`, `aws-ps://`), HashiCorp
   Vault (`vault://`) and the Google Cloud and Azure secret managers. Until then, see
   [Passwords and secrets](/docs/secrets/).

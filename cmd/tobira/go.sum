@@ -632,6 +632,8 @@ github.com/nats-io/nkeys v0.1.0/go.mod h1:xpnFELMwJABBLVhffcfd1MZx6VsNRFpEugbxzi
 github.com/nats-io/nuid v1.0.1/go.mod h1:19wcPz3Ph3q0Jbyiqsd0kePYG7A95tJPxeL+1OSON2c=
 github.com/ncruces/go-strftime v1.0.0 h1:HMFp8mLCTPp341M/ZnA4qaf7ZlsbTc+miZjCLOFAw7w=
 github.com/ncruces/go-strftime v1.0.0/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
+github.com/neo4j/neo4j-go-driver/v5 v5.28.6 h1:U6lQTe6EBzyMy7tAjpMZj/5vNK9+MPhCtBlfmGGffXo=
+github.com/neo4j/neo4j-go-driver/v5 v5.28.6/go.mod h1:Vff8OwT7QpLm7L2yYr85XNWe9Rbqlbeb9asNXJTHO4k=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/oapi-codegen/nullable v1.1.0 h1:eAh8JVc5430VtYVnq00Hrbpag9PFRGWLjxR1/3KntMs=
 github.com/oapi-codegen/nullable v1.1.0/go.mod h1:KUZ3vUzkmEKY90ksAmit2+5juDIhIZhfDl+0PwOQlFY=
@@ -764,6 +766,8 @@ github.com/testcontainers/testcontainers-go/modules/mssql v0.44.0 h1:G5EG7RfW6Ca
 github.com/testcontainers/testcontainers-go/modules/mssql v0.44.0/go.mod h1:KA3hfwkEFwR9oOb/P+xGilb5MBGCDFIOw2Kjfls51MQ=
 github.com/testcontainers/testcontainers-go/modules/mysql v0.44.0 h1:oJPJPxNE6YQ0zlq6mZKh06JOlyimCky4ruQUimdDet4=
 github.com/testcontainers/testcontainers-go/modules/mysql v0.44.0/go.mod h1:MSOAU6ukCpehJVHQDN1k9JgOZXZuqHD+2pT20M3JkIg=
+github.com/testcontainers/testcontainers-go/modules/neo4j v0.44.0 h1:JTr9El4SzzM88UwDFiKSaZGvuYEFpRtczJXd4shhOR4=
+github.com/testcontainers/testcontainers-go/modules/neo4j v0.44.0/go.mod h1:RDFMbFNjktyzJOvCkU0EcwuKP1zYJa8wjgg7n4q/GHw=
 github.com/testcontainers/testcontainers-go/modules/opensearch v0.44.0 h1:iuBDo8U8Nwt0z+bxEmU+c7jS9hw81nPL9uGkkFOcXTo=
 github.com/testcontainers/testcontainers-go/modules/opensearch v0.44.0/go.mod h1:8Qw29ffsCPzhomxqoeGhpj3J3Lbsrv0FsOUWeOjTl+I=
 github.com/testcontainers/testcontainers-go/modules/postgres v0.44.0 h1:8fdv/9y3JMxjQ+ULAcOG8RtgeNu5t9XF9LolSXDuTwM=

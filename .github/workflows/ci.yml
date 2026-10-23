@@ -229,6 +229,22 @@ jobs:
         working-directory: drivers/cassandra
         run: go test -race -count=1 -tags integration ./...
 
+  # Neo4j: neo4j:5.26 started by testcontainers, including the conformance
+  # kit (graph neighbourhood, browse, explain) and the server-enforced
+  # read-only mode.
+  integration-neo4j:
+    name: integration drivers/neo4j
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/neo4j/go.mod
+          cache-dependency-path: drivers/neo4j/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/neo4j
+        run: go test -race -count=1 -tags integration ./...
+
   # Oracle Database: gvenzl/oracle-free:23.26.3-slim started by
   # testcontainers, including the conformance kit, the lexer probes and the
   # read-only guard.

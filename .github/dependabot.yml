@@ -82,6 +82,12 @@ updates:
     schedule: { interval: weekly }
     labels: [dependencies, go, driver]
 
+  # Neo4j driver (own go.mod; neo4j-go-driver v5)
+  - package-ecosystem: gomod
+    directory: "/drivers/neo4j"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
   # Oracle driver (own go.mod; sijms/go-ora)
   - package-ecosystem: gomod
     directory: "/drivers/oracle"

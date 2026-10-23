@@ -12,7 +12,7 @@ export const LLMS_DESCRIPTION =
   "and commands. " +
   "SQLite, PostgreSQL with pgvector, MySQL, MariaDB, SingleStore, Amazon Redshift, " +
   "CockroachDB, Greenplum, SQL Server, Oracle, Snowflake, BigQuery, Vertica, libSQL / Turso, Cloudflare D1, MongoDB, " +
-  "Cloud Firestore, Azure Cosmos DB, Amazon DynamoDB, Redis, Cassandra, ClickHouse, InfluxDB, Elasticsearch, OpenSearch, " +
+  "Cloud Firestore, Azure Cosmos DB, Amazon DynamoDB, Redis, Cassandra, Neo4j, ClickHouse, InfluxDB, Elasticsearch, OpenSearch, " +
   "Qdrant, Pinecone, Weaviate, Chroma and Milvus work in the terminal UI and `tobira query` (DuckDB as an external plugin), " +
   "an AI assistant answers questions about them, `tobira mcp` serves them to agents, " +
   "and drivers can also be external plugins.";
