@@ -2,6 +2,13 @@
 
 All notable changes to tobira are listed here, newest first. Versions follow [Semantic Versioning](https://semver.org/). Each new release is added at the top, with notes generated from the commit messages.
 
+# [1.3.0](https://github.com/xavidop/tobira/compare/v1.2.0...v1.3.0) (2026-10-23)
+
+
+### Features
+
+* **drivers:** add the Neo4j driver ([#40](https://github.com/xavidop/tobira/issues/40)) ([0ff2cc3](https://github.com/xavidop/tobira/commit/0ff2cc3b42d39250eb584134b59e4e2a4811f709))
+
 # [1.2.0](https://github.com/xavidop/tobira/compare/v1.1.1...v1.2.0) (2026-10-23)
 
 
