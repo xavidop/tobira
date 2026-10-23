@@ -2,6 +2,13 @@
 
 All notable changes to tobira are listed here, newest first. Versions follow [Semantic Versioning](https://semver.org/). Each new release is added at the top, with notes generated from the commit messages.
 
+# [1.2.0](https://github.com/xavidop/tobira/compare/v1.1.1...v1.2.0) (2026-10-23)
+
+
+### Features
+
+* **tui:** esc out, tab in, browse tab on open, and the driver's query form for the AI ([#38](https://github.com/xavidop/tobira/issues/38)) ([aefe33b](https://github.com/xavidop/tobira/commit/aefe33b1b3723da2e8ac3a8eb48d46d1f502d7f2))
+
 ## [1.1.1](https://github.com/xavidop/tobira/compare/v1.1.0...v1.1.1) (2026-10-23)
 
 
