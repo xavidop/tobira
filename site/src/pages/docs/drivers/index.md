@@ -75,6 +75,27 @@ or Cloudflare D1 in the cloud), or against a real Redshift cluster, Greenplum cl
 SingleStore server. Emulators can behave differently from the real service; see
 [emulators and fakes](/docs/troubleshooting/drivers/#emulators-and-fakes).
 
+## Compatible databases and services
+
+Many databases speak a protocol that a built-in driver already handles, so they need no driver of
+their own: connect with the driver named here and its DSN format. tobira's CI tests the servers in
+the matrix above, not these services, and what a service leaves out of the protocol tobira cannot
+do either.
+
+| Database or service | Use the driver | Notes |
+|---|---|---|
+| Neon, Supabase, AlloyDB, Amazon Aurora PostgreSQL, Amazon RDS for PostgreSQL, Google Cloud SQL for PostgreSQL, Azure Database for PostgreSQL | [PostgreSQL](/docs/drivers/postgres/) | the PostgreSQL wire protocol |
+| YugabyteDB, TimescaleDB, Citus | [PostgreSQL](/docs/drivers/postgres/) | PostgreSQL-compatible; their own SQL functions work as queries |
+| Amazon Aurora MySQL, Amazon RDS for MySQL, Google Cloud SQL for MySQL, Azure Database for MySQL, PlanetScale, TiDB, Vitess | [MySQL](/docs/drivers/mysql/) | the MySQL wire protocol |
+| ScyllaDB | [Cassandra](/docs/drivers/cassandra/) | CQL; see the Cassandra page |
+| Valkey, KeyDB, Dragonfly, Amazon ElastiCache, Google Memorystore, Azure Cache for Redis | [Redis](/docs/drivers/redis/) | the RESP protocol |
+| Amazon DocumentDB, Azure Cosmos DB for MongoDB, FerretDB | [MongoDB](/docs/drivers/mongodb/) | the MongoDB wire protocol; each implements a subset of the commands |
+| Turso | [libSQL / Turso](/docs/drivers/libsql/) | covered on the libSQL page |
+| OpenSearch | [Elasticsearch / OpenSearch](/docs/drivers/elasticsearch/) | its own driver, `opensearch` |
+| ClickHouse Cloud | [ClickHouse](/docs/drivers/clickhouse/) | |
+| Zilliz Cloud | [Milvus](/docs/drivers/milvus/) | managed Milvus |
+| Qdrant Cloud, Weaviate Cloud, Chroma Cloud | the driver of the same name | the hosted service's URL and API key in the DSN |
+
 ## A database that is not listed
 
 See [Write a driver](/docs/write-a-driver/). A driver can be an external plugin, so it does not have
