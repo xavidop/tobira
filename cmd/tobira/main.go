@@ -30,6 +30,7 @@ import (
 	_ "github.com/xavidop/tobira/drivers/mongodb"       // registers "mongodb"
 	_ "github.com/xavidop/tobira/drivers/mssql"         // registers "mssql" (schemes sqlserver, mssql)
 	_ "github.com/xavidop/tobira/drivers/mysql"         // registers "mysql", "mariadb" and "singlestore"
+	_ "github.com/xavidop/tobira/drivers/neo4j"         // registers "neo4j"
 	_ "github.com/xavidop/tobira/drivers/oracle"        // registers "oracle"
 	_ "github.com/xavidop/tobira/drivers/pinecone"      // registers "pinecone"
 	_ "github.com/xavidop/tobira/drivers/postgres"      // registers "postgres", "cockroachdb", "redshift" and "greenplum"

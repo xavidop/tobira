@@ -20,6 +20,7 @@ use (
 	./drivers/mongodb
 	./drivers/mssql
 	./drivers/mysql
+	./drivers/neo4j
 	./drivers/oracle
 	./drivers/pinecone
 	./drivers/postgres

@@ -55,7 +55,7 @@ This is a multi-module repository tied together by a `go.work` file:
   module so the core needs no model SDK.
 - `drivers/<name>`: one module per database driver (`bigquery`, `cassandra`, `chroma`,
   `clickhouse`, `cosmos`, `d1`, `duckdb`, `dynamodb`, `elasticsearch`, `firestore`, `influxdb`,
-  `libsql`, `milvus`, `mongodb`, `mssql`, `mysql`, `oracle`, `pinecone`, `postgres`, `qdrant`,
+  `libsql`, `milvus`, `mongodb`, `mssql`, `mysql`, `neo4j`, `oracle`, `pinecone`, `postgres`, `qdrant`,
   `redis`, `snowflake`, `sqlite`, `vertica`, `weaviate`), so a database SDK never reaches the core.
   `duckdb` builds the external plugin `tobira-driver-duckdb` (with cgo).
 - `plugin/sdk`: the Go SDK for external driver plugins, its own module.

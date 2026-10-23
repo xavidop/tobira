@@ -40,11 +40,11 @@ The [Quick start](/docs/quickstart/) walks through a first session.
 
 ## Databases
 
-tobira ships with thirty drivers: SQLite, PostgreSQL (with pgvector), MySQL, MariaDB, SingleStore,
+tobira ships with thirty-one drivers: SQLite, PostgreSQL (with pgvector), MySQL, MariaDB, SingleStore,
 Amazon Redshift, CockroachDB, Greenplum, SQL Server, Oracle, Snowflake, BigQuery, Vertica,
 libSQL / Turso, Cloudflare D1, MongoDB, Cloud Firestore, Azure Cosmos DB, Amazon DynamoDB, Redis,
-Cassandra, ClickHouse, InfluxDB, Elasticsearch, OpenSearch, Qdrant, Pinecone, Weaviate, Chroma and
-Milvus. DuckDB is an external plugin that you [install separately](/docs/drivers/duckdb/#install).
+Cassandra, ClickHouse, InfluxDB, Elasticsearch, OpenSearch, Qdrant, Pinecone, Weaviate, Chroma,
+Milvus and Neo4j. DuckDB is an external plugin that you [install separately](/docs/drivers/duckdb/#install).
 The [drivers page](/docs/drivers/) shows what each one supports.
 
 ## AI ready, CI ready

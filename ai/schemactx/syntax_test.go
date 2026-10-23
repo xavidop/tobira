@@ -22,6 +22,7 @@ func TestQuerySyntax(t *testing.T) {
 		"cosmos-sql":     "SELECT VALUE COUNT(1)",
 		"partiql":        `FROM "orders"`,
 		"influxdb3-sql":  "date_bin",
+		"cypher":         "db.relationshipTypes()",
 	} {
 		got := QuerySyntax(dialect)
 		if !strings.HasPrefix(got, "one ") || !strings.Contains(got, "Examples: ") || !strings.Contains(got, want) {

@@ -22,6 +22,7 @@ require (
 	github.com/xavidop/tobira/drivers/mongodb v0.0.0-00010101000000-000000000000
 	github.com/xavidop/tobira/drivers/mssql v0.0.0-00010101000000-000000000000
 	github.com/xavidop/tobira/drivers/mysql v0.0.0-00010101000000-000000000000
+	github.com/xavidop/tobira/drivers/neo4j v0.0.0-00010101000000-000000000000
 	github.com/xavidop/tobira/drivers/oracle v0.0.0-00010101000000-000000000000
 	github.com/xavidop/tobira/drivers/pinecone v0.0.0-00010101000000-000000000000
 	github.com/xavidop/tobira/drivers/postgres v0.0.0-00010101000000-000000000000
@@ -204,6 +205,7 @@ require (
 	github.com/mtibben/percent v0.2.1 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
+	github.com/neo4j/neo4j-go-driver/v5 v5.28.6 // indirect
 	github.com/oapi-codegen/runtime v1.7.0 // indirect
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
@@ -315,6 +317,8 @@ replace github.com/xavidop/tobira/drivers/postgres => ../../drivers/postgres
 replace github.com/xavidop/tobira/drivers/mssql => ../../drivers/mssql
 
 replace github.com/xavidop/tobira/drivers/mysql => ../../drivers/mysql
+
+replace github.com/xavidop/tobira/drivers/neo4j => ../../drivers/neo4j
 
 replace github.com/xavidop/tobira/ai => ../../ai
 

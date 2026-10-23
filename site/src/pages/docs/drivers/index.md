@@ -5,7 +5,7 @@ title: Drivers
 
 # Drivers
 
-tobira ships with thirty built-in drivers, plus DuckDB as an external plugin. Elasticsearch and
+tobira ships with thirty-one built-in drivers, plus DuckDB as an external plugin. Elasticsearch and
 OpenSearch share one row but count as a driver each; pgvector is part of the PostgreSQL driver. Each
 driver's page has its DSN format, examples, capabilities and read-only behaviour.
 
@@ -38,6 +38,7 @@ GitHub release, or build it from source.
 | [Redis](/docs/drivers/redis/) | Key-value | yes | no | no | no | editing, watch, read-only guard | real server |
 | [Amazon DynamoDB](/docs/drivers/dynamodb/) | Key-value | yes | no | no | no | editing, completion, watch (Streams), read-only guard | DynamoDB Local |
 | [Cassandra](/docs/drivers/cassandra/) | Wide-column | yes (paging state; tobira-side sort up to 10,000 rows) | no | no | no | editing (conditional writes), completion, read-only guard | real server |
+| [Neo4j](/docs/drivers/neo4j/) | Graph | yes (offset pages over a label) | yes (`EXPLAIN`; `PROFILE` runs it) | no | no | graph neighbourhood, read-only guard (server-enforced) | real server |
 | [Elasticsearch / OpenSearch](/docs/drivers/elasticsearch/) (2 drivers) | Search | yes (`search_after` on a point in time) | yes (`_validate/query`, never runs; `ANALYZE` runs the search with profiling) | Elasticsearch: yes (kNN on `dense_vector`, exact `script_score` for other metrics; text with an embedder); OpenSearch: no | no | editing, read-only guard | real servers |
 | [InfluxDB](/docs/drivers/influxdb/) | Time series | yes | no | no | yes (windowed ranges, SQL or InfluxQL) | read-only guard | real server |
 | [Qdrant](/docs/drivers/qdrant/) | Vector | yes | no | yes (per-vector metric, text with an embedder) | no | editing, read-only guard | real server |
@@ -53,6 +54,8 @@ Every driver can run queries, list namespaces and collections, and describe a co
 - **Vector search**: similarity search with the terminal UI's `S` and `:similar`, and the
   `similar` tool of the AI assistant and the MCP server.
 - **Time series**: time-range reads with the terminal UI's `:chart` and `:range`.
+- **graph neighbourhood**: the `GraphReader` capability, a node and the paths around it, for hosts
+  of the [driver package](/docs/write-a-driver/); the terminal UI has no graph view yet.
 - **watch**: change events in the terminal UI's [live tail](/docs/tui/#live-tail) (`W`, `:watch`)
   and in `tobira watch`.
 - **read-only guard**: a statement run read-only cannot write, whatever its text says. The AI

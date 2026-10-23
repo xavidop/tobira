@@ -174,7 +174,7 @@ func TestDriverTablesMatchTheBinary(t *testing.T) {
 	display := map[string]string{
 		"sqlite": "sqlite", "postgresql": "postgres", "mysql": "mysql",
 		"mongodb": "mongodb", "redis": "redis", "clickhouse": "clickhouse",
-		"qdrant": "qdrant", "influxdb": "influxdb", "sql server": "mssql", "cassandra": "cassandra", "oracle": "oracle",
+		"qdrant": "qdrant", "influxdb": "influxdb", "sql server": "mssql", "cassandra": "cassandra", "neo4j": "neo4j", "oracle": "oracle",
 		"bigquery": "bigquery", "amazon dynamodb": "dynamodb",
 		"libsql / turso": "libsql", "elasticsearch / opensearch (2 drivers)": "elasticsearch",
 		"amazon redshift": "redshift", "cockroachdb": "cockroachdb", "greenplum": "greenplum",
@@ -301,7 +301,8 @@ func checkHostedRow(t *testing.T, file, shown string, cells []string, host strin
 // countWords are the spelled-out numbers the docs use for the driver count.
 var countWords = []string{"zero", "one", "two", "three", "four", "five", "six", "seven", "eight",
 	"nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen",
-	"nineteen", "twenty", "twenty-one", "twenty-two", "twenty-three", "twenty-four", "twenty-five", "twenty-six", "twenty-seven", "twenty-eight", "twenty-nine", "thirty"}
+	"nineteen", "twenty", "twenty-one", "twenty-two", "twenty-three", "twenty-four", "twenty-five", "twenty-six", "twenty-seven", "twenty-eight", "twenty-nine", "thirty",
+	"thirty-one", "thirty-two", "thirty-three", "thirty-four", "thirty-five", "thirty-six", "thirty-seven", "thirty-eight", "thirty-nine", "forty"}
 
 // TestDocsDriverCountMatchesTheBinary checks every "<N> drivers" claim of the
 // README, the docs index and the agent skill against the number of drivers

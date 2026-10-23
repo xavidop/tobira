@@ -110,7 +110,7 @@ tobira query local-pg "select now()"
 
 ## Drivers
 
-tobira ships thirty drivers in the binary, plus DuckDB as an external plugin. Elasticsearch and
+tobira ships thirty-one drivers in the binary, plus DuckDB as an external plugin. Elasticsearch and
 OpenSearch share one row but count as a driver each; pgvector is part of the PostgreSQL driver.
 
 | Driver | Kind | Browse | Explain | Vector search | Time series | Other capabilities | Tested against |
@@ -137,6 +137,7 @@ OpenSearch share one row but count as a driver each; pgvector is part of the Pos
 | Redis | Key-value | yes | no | no | no | editing, watch, read-only guard | real server |
 | Amazon DynamoDB | Key-value | yes | no | no | no | editing, completion, watch (Streams), read-only guard | DynamoDB Local |
 | Cassandra | Wide-column | yes (paging state; tobira-side sort up to 10,000 rows) | no | no | no | editing (conditional writes), completion, read-only guard | real server |
+| Neo4j | Graph | yes (offset pages over a label) | yes (`EXPLAIN`; `PROFILE` runs it) | no | no | graph neighbourhood, read-only guard (server-enforced) | real server |
 | Elasticsearch / OpenSearch (2 drivers) | Search | yes (`search_after` on a point in time) | yes (`_validate/query`, never runs; `ANALYZE` runs the search with profiling) | Elasticsearch: yes (kNN on `dense_vector`, exact `script_score` for other metrics; text with an embedder); OpenSearch: no | no | editing, read-only guard | real servers |
 | InfluxDB | Time series | yes | no | no | yes (windowed ranges, SQL or InfluxQL) | read-only guard | real server |
 | Qdrant | Vector | yes | no | yes (per-vector metric, text with an embedder) | no | editing, read-only guard | real server |
