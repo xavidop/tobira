@@ -118,6 +118,12 @@ updates:
     schedule: { interval: weekly }
     labels: [dependencies, go, driver]
 
+  # GitHub driver (own go.mod; no SDK, net/http against the REST and GraphQL APIs)
+  - package-ecosystem: gomod
+    directory: "/drivers/github"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, driver]
+
   # Pinecone driver (own go.mod; go-pinecone v7, REST control plane + gRPC data plane)
   - package-ecosystem: gomod
     directory: "/drivers/pinecone"

@@ -12,7 +12,7 @@ import (
 // they are split into top-level values, never at a semicolon.
 var jsonDialects = map[string]bool{
 	"elasticsearch": true, "opensearch": true, "firestore-json": true, "pinecone": true,
-	"weaviate": true, "chroma": true, "milvus": true, "mongodb": true, "qdrant": true,
+	"weaviate": true, "chroma": true, "milvus": true, "mongodb": true, "qdrant": true, "github": true,
 }
 
 // splitStatements splits the editor text into the statements ctrl+enter

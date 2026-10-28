@@ -116,7 +116,7 @@ tobira query local-pg "select now()"
 
 ## Drivers
 
-tobira ships thirty-one drivers in the binary, plus DuckDB as an external plugin. Elasticsearch and
+tobira ships thirty-two drivers in the binary, plus DuckDB as an external plugin. Elasticsearch and
 OpenSearch share one row but count as a driver each; pgvector is part of the PostgreSQL driver.
 
 | Driver | Kind | Browse | Explain | Vector search | Time series | Other capabilities | Tested against |
@@ -148,6 +148,7 @@ OpenSearch share one row but count as a driver each; pgvector is part of the Pos
 | InfluxDB | Time series | yes | no | no | yes (windowed ranges, SQL or InfluxQL) | read-only guard | real server |
 | Qdrant | Vector | yes | no | yes (per-vector metric, text with an embedder) | no | editing, read-only guard | real server |
 | pgvector (part of PostgreSQL) | Vector | yes | yes | yes (L2, cosine, inner product; text with an embedder) | no | read-only guard | real server |
+| GitHub | API | yes (page cursors; server-side filters where GitHub has them, the rest in tobira) | yes (the requests a query would send, never sent) | no | no | editing, completion, read-only guard | local fake of the GitHub REST API |
 | Pinecone | Vector | yes (list order; tobira-side filters, sort up to 10,000 records) | no | yes (index metric, text with an embedder) | no | editing, read-only guard | Pinecone Local |
 | Weaviate | Vector | yes (cursor API; offset pages when filtered or sorted) | no | yes (per-vector metric, text with an embedder) | no | editing, read-only guard | real server |
 | Chroma | Vector | yes (Chroma's order; tobira-side sort up to 10,000 records; server-side filters) | no | yes (collection's space, text with an embedder) | no | editing, read-only guard | real server |

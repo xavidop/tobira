@@ -24,6 +24,7 @@ import (
 	_ "github.com/xavidop/tobira/drivers/dynamodb"      // registers "dynamodb"
 	_ "github.com/xavidop/tobira/drivers/elasticsearch" // registers "elasticsearch" and "opensearch"
 	_ "github.com/xavidop/tobira/drivers/firestore"     // registers "firestore"
+	_ "github.com/xavidop/tobira/drivers/github"        // registers "github" (scheme github; GitHub REST and GraphQL APIs)
 	_ "github.com/xavidop/tobira/drivers/influxdb"      // registers "influxdb"
 	_ "github.com/xavidop/tobira/drivers/libsql"        // registers "libsql" (scheme libsql; http(s)/ws(s) with driver: libsql)
 	_ "github.com/xavidop/tobira/drivers/milvus"        // registers "milvus"

@@ -16,6 +16,7 @@ require (
 	github.com/xavidop/tobira/drivers/dynamodb v0.0.0-00010101000000-000000000000
 	github.com/xavidop/tobira/drivers/elasticsearch v0.0.0-00010101000000-000000000000
 	github.com/xavidop/tobira/drivers/firestore v0.0.0-00010101000000-000000000000
+	github.com/xavidop/tobira/drivers/github v0.0.0-00010101000000-000000000000
 	github.com/xavidop/tobira/drivers/influxdb v0.0.0-00010101000000-000000000000
 	github.com/xavidop/tobira/drivers/libsql v0.0.0-00010101000000-000000000000
 	github.com/xavidop/tobira/drivers/milvus v0.0.0-00010101000000-000000000000
@@ -336,6 +337,8 @@ replace github.com/xavidop/tobira/drivers/redis => ../../drivers/redis
 replace github.com/xavidop/tobira/drivers/d1 => ../../drivers/d1
 
 replace github.com/xavidop/tobira/drivers/firestore => ../../drivers/firestore
+
+replace github.com/xavidop/tobira/drivers/github => ../../drivers/github
 
 replace github.com/xavidop/tobira/drivers/snowflake => ../../drivers/snowflake
 
