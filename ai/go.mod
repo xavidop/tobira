@@ -8,7 +8,7 @@ require (
 	github.com/firebase/genkit/go v1.14.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/google/dotprompt/go v0.0.0-20260708220100-73beb993ac95
-	github.com/mark3labs/mcp-go v1.3.0
+	github.com/mark3labs/mcp-go v1.4.0
 	github.com/openai/openai-go v1.12.0
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/testcontainers/testcontainers-go/modules/mysql v0.44.0
