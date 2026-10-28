@@ -258,7 +258,7 @@ func openDB(ctx context.Context, path, config string, locked bool) (*sql.DB, err
 
 // isConfigConflict reports DuckDB's refusal to open a second instance of a
 // file with another configuration. It matches DuckDB's English error text
-// (1.5.6): a rewording in a DuckDB upgrade turns the shared fallback into a
+// (2.0.0): a rewording in a DuckDB upgrade turns the shared fallback into a
 // hard error, which TestReadOnlySharesReadWriteInstance would catch.
 func isConfigConflict(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "different configuration than existing connections")
