@@ -13,7 +13,7 @@ export const LLMS_DESCRIPTION =
   "SQLite, PostgreSQL with pgvector, MySQL, MariaDB, SingleStore, Amazon Redshift, " +
   "CockroachDB, Greenplum, SQL Server, Oracle, Snowflake, BigQuery, Vertica, libSQL / Turso, Cloudflare D1, MongoDB, " +
   "Cloud Firestore, Azure Cosmos DB, Amazon DynamoDB, Redis, Cassandra, Neo4j, ClickHouse, InfluxDB, Elasticsearch, OpenSearch, " +
-  "Qdrant, Pinecone, Weaviate, Chroma and Milvus work in the terminal UI and `tobira query` (DuckDB as an external plugin), " +
+  "Qdrant, Pinecone, Weaviate, Chroma, Milvus and GitHub work in the terminal UI and `tobira query` (DuckDB as an external plugin), " +
   "an AI assistant answers questions about them, `tobira mcp` serves them to agents, " +
   "and drivers can also be external plugins.";
 // No absolute URL here: every link in these files is built with absoluteUrl
@@ -121,6 +121,7 @@ const ORDER = [
   "/docs/drivers/redis",
   "/docs/drivers/elasticsearch",
   "/docs/drivers/influxdb",
+  "/docs/drivers/github",
   "/docs/drivers/chroma",
   "/docs/drivers/milvus",
   "/docs/drivers/pgvector",

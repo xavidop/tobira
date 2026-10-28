@@ -1,6 +1,6 @@
 ---
 name: tobira
-description: Use when working with tobira, the Go terminal client for many databases (SQL, document, key-value, columnar, time-series, search, wide-column, vector: SQLite, PostgreSQL and pgvector, MySQL, SQL Server, Oracle, Snowflake, BigQuery, ClickHouse, MongoDB, Firestore, Cosmos DB, Redis, DynamoDB, Cassandra, Elasticsearch, InfluxDB, Qdrant, Pinecone, Milvus, Neo4j, DuckDB and more), when explaining its driver model, installing it, planning or writing a driver (a Go module or an external plugin), installing a driver plugin with `tobira driver`, using the TUI and its query editor, editing rows, exporting results, running `tobira query`, `tobira watch`, `tobira ask`, `tobira history`, `tobira mcp`, `tobira doctor` or `tobira connections` (including importing from DBeaver, TablePlus or ~/.pgpass and exporting), the AI assistant and its `ai:` config, the MCP server and its `mcp:` config and client setup, configuring connections and secrets, troubleshooting a setup, or answering what the tobira CLI can do. Covers github.com/xavidop/tobira.
+description: Use when working with tobira, the Go terminal client for many databases (SQL, document, key-value, columnar, time-series, search, wide-column, vector: SQLite, PostgreSQL and pgvector, MySQL, SQL Server, Oracle, Snowflake, BigQuery, ClickHouse, MongoDB, Firestore, Cosmos DB, Redis, DynamoDB, Cassandra, Elasticsearch, InfluxDB, Qdrant, Pinecone, Milvus, Neo4j, GitHub, DuckDB and more), when explaining its driver model, installing it, planning or writing a driver (a Go module or an external plugin), installing a driver plugin with `tobira driver`, using the TUI and its query editor, editing rows, exporting results, running `tobira query`, `tobira watch`, `tobira ask`, `tobira history`, `tobira mcp`, `tobira doctor` or `tobira connections` (including importing from DBeaver, TablePlus or ~/.pgpass and exporting), the AI assistant and its `ai:` config, the MCP server and its `mcp:` config and client setup, configuring connections and secrets, troubleshooting a setup, or answering what the tobira CLI can do. Covers github.com/xavidop/tobira.
 ---
 
 # tobira: every database, one terminal
@@ -12,16 +12,16 @@ Docs: https://xavidop.github.io/tobira/docs/
 
 What it has: `tobira` (the terminal UI), `tobira connect`, `tobira connections` (with `export`
 and `import`), `tobira query`, `tobira watch`, `tobira ask`, `tobira mcp`, `tobira history`,
-`tobira driver`, `tobira doctor` and `tobira version`, with thirty-one drivers (SQLite, PostgreSQL with
+`tobira driver`, `tobira doctor` and `tobira version`, with thirty-two drivers (SQLite, PostgreSQL with
 pgvector, MySQL, MongoDB, Redis, ClickHouse, Qdrant, InfluxDB, CockroachDB, MariaDB, Redshift,
 Greenplum, SingleStore, SQL Server, Cassandra, Oracle, BigQuery, Amazon DynamoDB, libSQL / Turso,
 Elasticsearch and OpenSearch, Snowflake, Cloud Firestore, Cloudflare D1, Pinecone, Azure Cosmos DB,
-Weaviate, Chroma, Vertica, Milvus, Neo4j, plus DuckDB as an external plugin), config and secrets. The TUI
+Weaviate, Chroma, Vertica, Milvus, Neo4j, GitHub, plus DuckDB as an external plugin), config and secrets. The TUI
 browses, edits rows inline, has a query editor with completion, result tabs and history, runs
 transactions, exports to a file, has views per kind of collection (documents, key-value, time
 series, vectors) and an AI panel. Drivers can also be external plugins (`tobira-driver-<name>`
-programs over gRPC) that `tobira driver` lists and installs. tobira has no graph database driver:
-do not tell a user otherwise.
+programs over gRPC) that `tobira driver` lists and installs. Neo4j is the one graph database
+driver and GitHub the one API driver: do not promise others.
 
 ## The model in one minute
 
@@ -83,6 +83,11 @@ do not tell a user otherwise.
     search and editing. Queries are JSON.
   - **Time series:** **InfluxDB 3** (`influxdb3://`, `influxdb://`): browse measurements and
     time-range reads, in SQL or InfluxQL.
+  - **API:** **GitHub** (`github://owner/repo`): a repository's issues, pull requests, comments,
+    commits, branches, tags, releases, labels, milestones and workflow runs as collections; browse,
+    explain (the requests, never sent), completion and editing (issues, pull requests, comments,
+    labels, milestones, releases). Queries are JSON (`list`, `get`, `search`, `repositories`,
+    `rest`, `graphql`, `rate_limit`); the token goes in `password:`.
   - **DuckDB** (`duckdb://`, `duckdb:`) is an external plugin, `tobira-driver-duckdb`, built with cgo and
     installed with `tobira driver install`.
   - Every driver but SingleStore declares the read-only guard (`readonly`). Each has its own
@@ -475,8 +480,8 @@ should see and preferring `read_only` connections. A runnable client is `example
 - Check what exists before promising it. tobira has the TUI (browse, inline editing, a query editor,
   `:tx`, `:readonly`, `:export` and the AI panel), `tobira connect`, `tobira connections` (with
   `set-password`, `export` and `import`), `tobira doctor`, `tobira version`, `tobira query` (with `--output`), `tobira watch`, `tobira ask`, `tobira
-  history`, the thirty-one drivers (SQLite, PostgreSQL with pgvector, MySQL, MongoDB, Redis, ClickHouse,
-  Qdrant, InfluxDB, CockroachDB, MariaDB, Redshift, Greenplum, SingleStore, SQL Server, Cassandra, Oracle, BigQuery, Amazon DynamoDB, libSQL / Turso, Elasticsearch, OpenSearch, Snowflake, Cloud Firestore, Cloudflare D1, Pinecone, Azure Cosmos DB, Weaviate, Chroma, Vertica, Milvus, Neo4j, plus the DuckDB plugin), the kind views, the live tail and similarity search, config and
+  history`, the thirty-two drivers (SQLite, PostgreSQL with pgvector, MySQL, MongoDB, Redis, ClickHouse,
+  Qdrant, InfluxDB, CockroachDB, MariaDB, Redshift, Greenplum, SingleStore, SQL Server, Cassandra, Oracle, BigQuery, Amazon DynamoDB, libSQL / Turso, Elasticsearch, OpenSearch, Snowflake, Cloud Firestore, Cloudflare D1, Pinecone, Azure Cosmos DB, Weaviate, Chroma, Vertica, Milvus, Neo4j, GitHub, plus the DuckDB plugin), the kind views, the live tail and similarity search, config and
   `env:`/`file://`/dotenv/`keyring:` secrets, `tobira mcp`, `tobira driver list|info|install` and external driver plugins, the `driver` and `drivertest` packages,
   and the docs site. The Neo4j driver is the one graph database driver.
 - When something fails, start with `tobira doctor` (or `--no-ping` offline) and the exit code: 1

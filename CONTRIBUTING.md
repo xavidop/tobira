@@ -54,7 +54,7 @@ This is a multi-module repository tied together by a `go.work` file:
 - `ai`: the AI assistant and the MCP server, built on [Genkit](https://genkit.dev). It is its own
   module so the core needs no model SDK.
 - `drivers/<name>`: one module per database driver (`bigquery`, `cassandra`, `chroma`,
-  `clickhouse`, `cosmos`, `d1`, `duckdb`, `dynamodb`, `elasticsearch`, `firestore`, `influxdb`,
+  `clickhouse`, `cosmos`, `d1`, `duckdb`, `dynamodb`, `elasticsearch`, `firestore`, `github`, `influxdb`,
   `libsql`, `milvus`, `mongodb`, `mssql`, `mysql`, `neo4j`, `oracle`, `pinecone`, `postgres`, `qdrant`,
   `redis`, `snowflake`, `sqlite`, `vertica`, `weaviate`), so a database SDK never reaches the core.
   `duckdb` builds the external plugin `tobira-driver-duckdb` (with cgo).

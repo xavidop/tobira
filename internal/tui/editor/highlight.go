@@ -61,7 +61,7 @@ func lexerFor(dialect string) chroma.Lexer {
 		name = "cql"
 	case "json", // the inline cell editor's JSON values
 		"elasticsearch", "opensearch", "firestore-json", "pinecone", "weaviate", "chroma", "milvus",
-		"mongodb", "qdrant":
+		"mongodb", "qdrant", "github":
 		name = "json"
 	}
 	if l := lexers.GlobalLexerRegistry.Get(name); l != nil {

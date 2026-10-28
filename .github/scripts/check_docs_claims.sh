@@ -36,7 +36,7 @@ if [ -n "$stale" ]; then
 	printf '%s\n' "$stale" >&2
 	exit 1
 fi
-internal="$(grep -nIiE '(^|[^a-z0-9])M[0-9]([^a-z0-9]|$)|pending release|release blockers?|docs/superpowers|milestone' "${root_docs[@]}" || true)"
+internal="$(grep -nIiE '(^|[^a-z0-9])M[0-9]([^a-z0-9]|$)|pending release|release blockers?|docs/superpowers|milestone([^s]|$)' "${root_docs[@]}" || true)"
 if [ -n "$internal" ]; then
 	echo "check-docs-claims: the root docs carry status, milestone or release-process wording:" >&2
 	printf '%s\n' "$internal" >&2

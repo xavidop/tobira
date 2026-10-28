@@ -245,6 +245,24 @@ jobs:
         working-directory: drivers/neo4j
         run: go test -race -count=1 -tags integration ./...
 
+  # GitHub: a read-only smoke test against api.github.com for the public
+  # xavidop/tobira repository with the workflow's own token (the conformance
+  # suite runs against an in-process fake in the ordinary test job).
+  integration-github:
+    name: integration drivers/github
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: drivers/github/go.mod
+          cache-dependency-path: drivers/github/go.sum
+      - name: go test (race, integration)
+        working-directory: drivers/github
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: go test -race -count=1 -tags integration ./...
+
   # Oracle Database: gvenzl/oracle-free:23.26.3-slim started by
   # testcontainers, including the conformance kit, the lexer probes and the
   # read-only guard.

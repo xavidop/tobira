@@ -181,7 +181,7 @@ func TestDriverTablesMatchTheBinary(t *testing.T) {
 		"mariadb": "mariadb", "singlestore": "singlestore",
 		"snowflake": "snowflake", "cloud firestore": "firestore", "cloudflare d1": "d1",
 		"pinecone": "pinecone", "azure cosmos db": "cosmos", "weaviate": "weaviate", "chroma": "chroma", "vertica": "vertica",
-		"milvus": "milvus",
+		"milvus": "milvus", "github": "github",
 	}
 
 	for _, file := range []string{"README.md", "site/src/pages/docs/drivers/index.md"} {
