@@ -510,7 +510,7 @@ func (c *conn) getItem(ctx context.Context, op string, col *collection, owner, r
 			break
 		}
 	}
-	return nil, notFoundErr(op, "no %s %q in the first %d", strings.TrimSuffix(col.name, "s"), key, maxListRows)
+	return nil, notFoundErr(op, "no %s %q in the first %d", singular(col), key, maxListRows)
 }
 
 // runSearch runs a GitHub search. Results are capped by GitHub at 1000.

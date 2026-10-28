@@ -17,6 +17,11 @@ import (
 // accepts; GitHub applies the write without a condition, so a change
 // another client made meanwhile is overwritten.
 
+// singular names one item of a collection: "issue", "pull request".
+func singular(col *collection) string {
+	return strings.ReplaceAll(strings.TrimSuffix(col.name, "s"), "_", " ")
+}
+
 // refuseReadOnly fails a write on a read-only connection before any request.
 func (c *conn) refuseReadOnly(ctx context.Context, op string) error {
 	if err := c.check(ctx, op); err != nil {
@@ -50,7 +55,7 @@ func (c *conn) Insert(ctx context.Context, ref driver.CollectionRef, values driv
 		}
 		if !slices.Contains(col.insert.fields, m.Key) {
 			if m.Key == col.keyCol {
-				return nil, syntaxErr(op, "GitHub assigns the %s of a new %s: leave it out", col.keyCol, strings.TrimSuffix(col.name, "s"))
+				return nil, syntaxErr(op, "GitHub assigns the %s of a new %s: leave it out", col.keyCol, singular(col))
 			}
 			if col.col(m.Key) == nil {
 				return nil, syntaxErr(op, "%s have no column %q", col.name, m.Key)
@@ -77,7 +82,7 @@ func (c *conn) Insert(ctx context.Context, ref driver.CollectionRef, values driv
 	for _, column := range col.columns {
 		if column.required && slices.Contains(col.insert.fields, column.name) {
 			if _, ok := body[column.name]; !ok && (column.name != "issue" || pathKey == "") {
-				return nil, syntaxErr(op, "a new %s needs %q", strings.TrimSuffix(col.name, "s"), column.name)
+				return nil, syntaxErr(op, "a new %s needs %q", singular(col), column.name)
 			}
 		}
 	}
@@ -122,7 +127,7 @@ func (c *conn) Update(ctx context.Context, ref driver.CollectionRef, key driver.
 	for _, m := range changes {
 		if !slices.Contains(col.update.fields, m.Key) {
 			if m.Key == col.keyCol {
-				return unsupportedErr(op, "the %s of a %s cannot change", col.keyCol, strings.TrimSuffix(col.name, "s"))
+				return unsupportedErr(op, "the %s of a %s cannot change", col.keyCol, singular(col))
 			}
 			if col.col(m.Key) == nil {
 				return syntaxErr(op, "%s have no column %q", col.name, m.Key)
@@ -163,7 +168,7 @@ func (c *conn) Delete(ctx context.Context, ref driver.CollectionRef, key driver.
 	if col.delete == nil {
 		switch col.name {
 		case "issues", "pull_requests":
-			return unsupportedErr(op, "GitHub cannot delete %s through its REST API: close it instead (set state to closed)", strings.ReplaceAll(strings.TrimSuffix(col.name, "s"), "_", " "))
+			return unsupportedErr(op, "GitHub cannot delete %s through its REST API: close it instead (set state to closed)", singular(col))
 		}
 		return unsupportedErr(op, "GitHub does not delete %s through tobira", col.name)
 	}

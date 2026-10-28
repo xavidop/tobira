@@ -34,6 +34,7 @@ type listRequest struct {
 	owner, repo string
 	query       url.Values // without per_page and page
 	perPage     int
+	local       string // the conditions applied in tobira, rendered for the hash
 }
 
 // path is the endpoint path.
@@ -51,11 +52,20 @@ func (r listRequest) pageQuery(page int) url.Values {
 }
 
 // hash identifies the request, so a cursor is only resumed with the same
-// parameters.
+// parameters and the same conditions applied in tobira.
 func (r listRequest) hash() string {
 	h := fnv.New32a()
-	_, _ = h.Write([]byte(r.col.name + "|" + strings.ToLower(r.owner+"/"+r.repo) + "|" + strconv.Itoa(r.perPage) + "|" + r.query.Encode()))
+	_, _ = h.Write([]byte(r.col.name + "|" + strings.ToLower(r.owner+"/"+r.repo) + "|" + strconv.Itoa(r.perPage) + "|" + r.query.Encode() + "|" + r.local))
 	return strconv.FormatUint(uint64(h.Sum32()), 16)
+}
+
+// renderConditions spells conditions out for a cursor's hash.
+func renderConditions(conds []driver.Condition) string {
+	parts := make([]string, len(conds))
+	for i, c := range conds {
+		parts[i] = c.Field + "\x00" + string(c.Op) + "\x00" + c.Value.String()
+	}
+	return strings.Join(parts, "\x01")
 }
 
 // fetchPage reads one page of items, dropping pull requests from an issues
@@ -244,7 +254,7 @@ func (c *conn) planBrowse(op string, col *collection, owner, repo string, opts d
 		// small page could cost a request per row: read full pages.
 		perPage = maxPerPage
 	}
-	return listRequest{col: col, owner: owner, repo: repo, query: query, perPage: perPage}, local, nil
+	return listRequest{col: col, owner: owner, repo: repo, query: query, perPage: perPage, local: renderConditions(local)}, local, nil
 }
 
 // sortableHint lists what a collection can be sorted by.
