@@ -4,7 +4,7 @@ go 1.26.10
 
 require (
 	cloud.google.com/go/auth v0.24.1
-	github.com/anthropics/anthropic-sdk-go v1.82.0
+	github.com/anthropics/anthropic-sdk-go v1.84.0
 	github.com/firebase/genkit/go v1.14.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/google/dotprompt/go v0.0.0-20260708220100-73beb993ac95
