@@ -3,7 +3,7 @@ module github.com/xavidop/tobira/cmd/tobira
 go 1.26.10
 
 require (
-	github.com/mark3labs/mcp-go v1.3.0
+	github.com/mark3labs/mcp-go v1.4.0
 	github.com/xavidop/mamori v1.13.0
 	github.com/xavidop/tobira v0.0.0-00010101000000-000000000000
 	github.com/xavidop/tobira/ai v0.0.0-00010101000000-000000000000
