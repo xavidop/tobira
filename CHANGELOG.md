@@ -2,6 +2,13 @@
 
 All notable changes to tobira are listed here, newest first. Versions follow [Semantic Versioning](https://semver.org/). Each new release is added at the top, with notes generated from the commit messages.
 
+# [1.5.0](https://github.com/xavidop/tobira/compare/v1.4.1...v1.5.0) (2026-10-28)
+
+
+### Features
+
+* **drivers:** add the GitHub driver ([#47](https://github.com/xavidop/tobira/issues/47)) ([71fcd00](https://github.com/xavidop/tobira/commit/71fcd00b81c52ff2efdb45d971da687683409167))
+
 ## [1.4.1](https://github.com/xavidop/tobira/compare/v1.4.0...v1.4.1) (2026-10-23)
 
 
