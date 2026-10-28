@@ -2,7 +2,7 @@ module github.com/xavidop/tobira/examples/mcp-client
 
 go 1.26.10
 
-require github.com/mark3labs/mcp-go v1.3.0
+require github.com/mark3labs/mcp-go v1.4.0
 
 require (
 	github.com/dlclark/regexp2 v1.12.0 // indirect
