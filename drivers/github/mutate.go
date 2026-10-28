@@ -33,14 +33,48 @@ func (c *conn) refuseReadOnly(ctx context.Context, op string) error {
 	return nil
 }
 
+// routeOwner resolves a write on an owner-wide collection to the item's
+// repository collection, named by the "repository" member of the key or of
+// the inserted values. The member is removed from members.
+func (c *conn) routeOwner(ctx context.Context, op string, col *collection, s scope, members *driver.Object) (*collection, string, string, error) {
+	if !s.ownerWide() {
+		return col, s.owner, s.repo, nil
+	}
+	if col.search == nil || col.search.peer == "" {
+		return nil, "", "", unsupportedErr(op, "an owner's %s are read-only", col.name)
+	}
+	repository := ""
+	kept := make(driver.Object, 0, len(*members))
+	for _, m := range *members {
+		if m.Key == "repository" {
+			repository, _ = text(m.Value)
+			continue
+		}
+		kept = append(kept, m)
+	}
+	*members = kept
+	peer, rs, err := c.ownerItemScope(op, col, s, repository)
+	if err != nil {
+		return nil, "", "", err
+	}
+	if _, err := c.repos.get(ctx, op, rs.owner, rs.repo); err != nil {
+		return nil, "", "", err
+	}
+	return peer, rs.owner, rs.repo, nil
+}
+
 // Insert creates one item. The key is assigned by GitHub (except a label's
-// name) and returned.
+// name) and returned. In an owner scope the values name the "repository".
 func (c *conn) Insert(ctx context.Context, ref driver.CollectionRef, values driver.Object) (driver.Object, error) {
 	const op = "insert"
 	if err := c.refuseReadOnly(ctx, op); err != nil {
 		return nil, err
 	}
-	col, owner, repo, err := c.collectionRef(ctx, op, ref)
+	col, s, err := c.collectionRef(ctx, op, ref)
+	if err != nil {
+		return nil, err
+	}
+	col, owner, repo, err := c.routeOwner(ctx, op, col, s, &values)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +132,11 @@ func (c *conn) Insert(ctx context.Context, ref driver.CollectionRef, values driv
 		return nil, c.fail(ctx, op, err)
 	}
 	c.catalog.Invalidate()
-	return driver.Object{{Key: col.keyCol, Value: row[indexOf(col.columns, col.keyCol)]}}, nil
+	key := driver.Object{{Key: col.keyCol, Value: row[indexOf(col.columns, col.keyCol)]}}
+	if s.ownerWide() {
+		key = append(driver.Object{{Key: "repository", Value: driver.String(owner + "/" + repo)}}, key...)
+	}
+	return key, nil
 }
 
 // Update changes the given members of one item; the others keep their
@@ -109,7 +147,11 @@ func (c *conn) Update(ctx context.Context, ref driver.CollectionRef, key driver.
 	if err := c.refuseReadOnly(ctx, op); err != nil {
 		return err
 	}
-	col, owner, repo, err := c.collectionRef(ctx, op, ref)
+	col, s, err := c.collectionRef(ctx, op, ref)
+	if err != nil {
+		return err
+	}
+	col, owner, repo, err := c.routeOwner(ctx, op, col, s, &key)
 	if err != nil {
 		return err
 	}
@@ -161,7 +203,11 @@ func (c *conn) Delete(ctx context.Context, ref driver.CollectionRef, key driver.
 	if err := c.refuseReadOnly(ctx, op); err != nil {
 		return err
 	}
-	col, owner, repo, err := c.collectionRef(ctx, op, ref)
+	col, s, err := c.collectionRef(ctx, op, ref)
+	if err != nil {
+		return err
+	}
+	col, owner, repo, err := c.routeOwner(ctx, op, col, s, &key)
 	if err != nil {
 		return err
 	}

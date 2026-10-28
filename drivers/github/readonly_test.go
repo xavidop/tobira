@@ -2,6 +2,7 @@ package github
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/xavidop/tobira/driver"
@@ -24,14 +25,25 @@ var writeQueries = map[string]string{
 	"duplicate op keys":           `{"op":"list","collection":"issues","op":"rest","method":"POST","path":"/repos/octo/widgets/labels"}`,
 	"two JSON objects":            `{"collection":"issues"} {"op":"rest","method":"POST","path":"/repos/octo/widgets/labels"}`,
 	"unknown op":                  `{"op":"write","path":"/repos/octo/widgets/labels"}`,
-	"not an object":               `["op","rest"]`,
 	"malformed":                   `{"op":"rest",`,
 	"unknown member":              `{"op":"rest","path":"/repos/octo/widgets/labels","mode":"POST"}`,
 	"method that is not a string": `{"op":"rest","method":["POST"],"path":"/repos/octo/widgets/labels"}`,
 }
 
+// notJSONQueries are texts that are not a JSON object at all: nothing could
+// run, so they are ErrSyntax with the hint on the JSON shape, read-only or
+// not.
+var notJSONQueries = map[string]string{
+	"array":      `["op","rest"]`,
+	"string":     `"list"`,
+	"SQL":        `select 1`,
+	"empty text": ``,
+	"blank text": `   `,
+}
+
 // On a read-only connection every write, compound form or unreadable text
-// is refused with ErrReadOnly before any request, and reads still run.
+// is refused with ErrReadOnly before any request, a text that is not JSON
+// is ErrSyntax with the hint on the shape, and reads still run.
 func TestReadOnlyConnectionRefusesWrites(t *testing.T) {
 	f := newFakeGitHub(t)
 	c := f.open(t, true)
@@ -40,6 +52,12 @@ func TestReadOnlyConnectionRefusesWrites(t *testing.T) {
 		_, err := c.Query(context.Background(), driver.Query{Text: text})
 		if err == nil || !isKind(err, driver.ErrReadOnly) {
 			t.Errorf("%s: %v, want ErrReadOnly", name, err)
+		}
+	}
+	for name, text := range notJSONQueries {
+		_, err := c.Query(context.Background(), driver.Query{Text: text})
+		if err == nil || !isKind(err, driver.ErrSyntax) || !strings.Contains(err.Error(), "one JSON object") {
+			t.Errorf("%s: %v, want ErrSyntax naming the JSON shape", name, err)
 		}
 	}
 	if w := f.writes(); len(w) != 0 {
@@ -82,6 +100,12 @@ func TestQueryReadOnlyRefusesWrites(t *testing.T) {
 			t.Errorf("%s: %v, want ErrReadOnly", name, err)
 		}
 	}
+	for name, text := range notJSONQueries {
+		_, err := c.Query(context.Background(), driver.Query{Text: text, ReadOnly: true})
+		if err == nil || !isKind(err, driver.ErrSyntax) {
+			t.Errorf("%s: %v, want ErrSyntax", name, err)
+		}
+	}
 	if n := len(f.log()); n != 0 {
 		t.Errorf("a refused query sent %d requests: %+v", n, f.log())
 	}
@@ -108,11 +132,17 @@ func TestWritableConnectionRunsOrRejectsThePlainWay(t *testing.T) {
 	c := f.open(t, false)
 	for name, kind := range map[string]error{
 		"duplicate op keys": driver.ErrSyntax, "two JSON objects": driver.ErrSyntax, "unknown op": driver.ErrSyntax,
-		"not an object": driver.ErrSyntax, "malformed": driver.ErrSyntax, "unknown member": driver.ErrSyntax, "method that is not a string": driver.ErrSyntax,
+		"malformed": driver.ErrSyntax, "unknown member": driver.ErrSyntax, "method that is not a string": driver.ErrSyntax,
 	} {
 		_, err := c.Query(context.Background(), driver.Query{Text: writeQueries[name]})
 		if !isKind(err, kind) {
 			t.Errorf("%s on a writable connection: %v, want %v", name, err, kind)
+		}
+	}
+	for name, text := range notJSONQueries {
+		_, err := c.Query(context.Background(), driver.Query{Text: text})
+		if !isKind(err, driver.ErrSyntax) {
+			t.Errorf("%s on a writable connection: %v, want ErrSyntax", name, err)
 		}
 	}
 	f.resetLog()

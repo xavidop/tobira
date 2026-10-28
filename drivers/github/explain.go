@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -29,7 +30,7 @@ func (c *conn) Explain(ctx context.Context, q driver.Query, opts driver.ExplainO
 	if err != nil {
 		return nil, err
 	}
-	reqs, note, err := c.plannedRequests(op, r, q)
+	reqs, note, err := c.plannedRequests(ctx, op, r, q)
 	if err != nil {
 		return nil, err
 	}
@@ -48,42 +49,97 @@ func (c *conn) Explain(ctx context.Context, q driver.Query, opts driver.ExplainO
 // plannedRequest is one request a query would send.
 type plannedRequest struct{ method, url string }
 
-// plannedRequests lists the requests of a parsed query, with a note on the
-// rate-limit cost. The repository is not looked up, so nothing is sent.
-func (c *conn) plannedRequests(op string, r request, q driver.Query) ([]plannedRequest, string, error) {
-	const costNote = "each request counts against the core rate limit (5,000 per hour with a token, 60 without); a page unchanged since the last read answers 304 and costs nothing"
-	pages := func(limit int) int { return (limit + maxPerPage - 1) / maxPerPage }
-	switch r.op {
-	case opList:
-		owner, repo, err := c.resolveRepo(op, firstNonEmpty(r.repo, q.Namespace))
+// cachedOwnerQualifier is the owner's search qualifier when the owner has
+// been looked up, else both spellings.
+func (c *conn) cachedOwnerQualifier(owner string) string {
+	c.repos.mu.Lock()
+	info, ok := c.repos.owners[strings.ToLower(owner)]
+	c.repos.mu.Unlock()
+	switch {
+	case ok && info.org:
+		return "org:" + info.login
+	case ok:
+		return "user:" + info.login
+	}
+	return "org:" + owner + " (or user:" + owner + ")"
+}
+
+// plannedGet is the request of a get query.
+func (c *conn) plannedGet(op string, col *collection, s scope, r request, costNote string) ([]plannedRequest, string, error) {
+	if s.ownerWide() {
+		if col.listing {
+			full := r.key
+			if !strings.Contains(full, "/") {
+				full = s.owner + "/" + full
+			}
+			return []plannedRequest{{http.MethodGet, c.client.url("/repos/"+full, nil)}}, "one request; " + costNote, nil
+		}
+		peer, rs, err := c.ownerItemScope(op, col, s, r.repository)
 		if err != nil {
 			return nil, "", err
 		}
+		col, s = peer, rs
+	}
+	if col.get == nil {
+		req := listRequest{col: col, owner: s.owner, repo: s.repo, query: url.Values{}, perPage: maxPerPage}
+		return []plannedRequest{{http.MethodGet, c.client.url(req.path(), req.pageQuery(1))}},
+			fmt.Sprintf("%s have no single-item endpoint: the listing is read page by page (up to %d requests) until the key is found; %s", col.name, maxListRows/maxPerPage, costNote), nil
+	}
+	return []plannedRequest{{http.MethodGet, c.client.url(col.get(s.owner, s.repo, r.key), nil)}}, "one request; " + costNote, nil
+}
+
+// plannedRequests lists the requests of a parsed query, with a note on the
+// rate-limit cost. Nothing is sent: a repository or owner is not looked up,
+// and an owner's kind (org: or user:) comes from the cache when it has been
+// seen, else both spellings are shown.
+func (c *conn) plannedRequests(ctx context.Context, op string, r request, q driver.Query) ([]plannedRequest, string, error) {
+	const costNote = "each request counts against the core rate limit (5,000 per hour with a token, 60 without); a page unchanged since the last read answers 304 and costs nothing"
+	const searchNote = "each request counts against the search rate limit (30 per minute with a token, 10 without); GitHub returns at most 1000 results"
+	pages := func(limit int) int { return (limit + maxPerPage - 1) / maxPerPage }
+	switch r.op {
+	case opList, opGet:
+		s, err := c.resolveScope(ctx, op, firstNonEmpty(r.repo, q.Namespace))
+		if err != nil {
+			return nil, "", err
+		}
+		col := collectionIn(s, r.collection)
+		if col == nil {
+			return nil, "", notFoundErr(op, "collection %q does not exist in %s (the collections are %s)", r.collection, s.name(), strings.Join(scopeCollectionNames(s), ", "))
+		}
+		for k := range r.params {
+			if !slices.Contains(col.params, k) {
+				return nil, "", syntaxErr(op, "%q is not a parameter of %s in %s (%s)", k, col.name, s.name(), strings.Join(col.params, ", "))
+			}
+		}
+		if r.op == opGet {
+			return c.plannedGet(op, col, s, r, costNote)
+		}
 		limit, _ := rowCap(r, q)
-		query := url.Values{}
-		for k, v := range r.collection.defaults {
-			query[k] = v
+		req := listRequest{col: col, owner: s.owner, repo: s.repo, query: url.Values{}, perPage: min(limit, maxPerPage)}
+		for k, v := range col.defaults {
+			req.query[k] = v
 		}
 		for k, v := range r.params {
-			query[k] = v
+			req.query[k] = v
 		}
-		req := listRequest{col: r.collection, owner: owner, repo: repo, query: query, perPage: min(limit, maxPerPage)}
+		note := costNote
+		switch {
+		case col.search != nil:
+			q, err := searchQuery(op, col, c.cachedOwnerQualifier(s.owner), r.params.Get("q"))
+			if err != nil {
+				return nil, "", err
+			}
+			req.query.Set("q", q)
+			note = searchNote
+		case col.listing:
+			req.listPath = "/users/" + url.PathEscape(s.owner) + "/repos"
+			note = "the listing is /users/" + s.owner + "/repos for a user, /orgs/" + s.owner + "/repos for an organization, /user/repos for the token's own login; " + costNote
+		}
 		var out []plannedRequest
 		for page := 1; page <= pages(limit); page++ {
 			out = append(out, plannedRequest{http.MethodGet, c.client.url(req.path(), req.pageQuery(page))})
 		}
-		return out, fmt.Sprintf("up to %d requests of %d items, fewer when the listing ends sooner; %s", pages(limit), req.perPage, costNote), nil
-	case opGet:
-		owner, repo, err := c.resolveRepo(op, firstNonEmpty(r.repo, q.Namespace))
-		if err != nil {
-			return nil, "", err
-		}
-		if r.collection.get == nil {
-			req := listRequest{col: r.collection, owner: owner, repo: repo, query: url.Values{}, perPage: maxPerPage}
-			return []plannedRequest{{http.MethodGet, c.client.url(req.path(), req.pageQuery(1))}},
-				fmt.Sprintf("%s have no single-item endpoint: the listing is read page by page (up to %d requests) until the key is found; %s", r.collection.name, maxListRows/maxPerPage, costNote), nil
-		}
-		return []plannedRequest{{http.MethodGet, c.client.url(r.collection.get(owner, repo, r.key), nil)}}, "one request; " + costNote, nil
+		return out, fmt.Sprintf("up to %d requests of %d items, fewer when the listing ends sooner; %s", pages(limit), req.perPage, note), nil
 	case opSearch:
 		limit, _ := rowCap(r, q)
 		endpoint, text := "/search/"+r.searchType, r.q

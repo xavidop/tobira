@@ -30,7 +30,8 @@ func TestNamespacesOfPinnedRepository(t *testing.T) {
 	}
 }
 
-// A user owner is listed through /users/{owner}/repos.
+// A user owner is the first namespace, the default one, followed by its
+// repositories listed through /users/{owner}/repos.
 func TestNamespacesOfUserOwner(t *testing.T) {
 	f := newFakeGitHub(t)
 	c := f.openDSN(t, f.dsn("hubot", ""), false, fakeToken)
@@ -38,25 +39,28 @@ func TestNamespacesOfUserOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := namespaceNames(nss); !slices.Equal(got, []string{"hubot/scripts"}) {
+	if got := namespaceNames(nss); !slices.Equal(got, []string{"hubot", "hubot/scripts"}) {
 		t.Errorf("Namespaces = %v", got)
 	}
 	if len(f.requestsTo("/users/hubot")) != 1 {
-		t.Error("the owner's type was not looked up")
+		t.Error("the owner's type was not looked up (or was looked up more than once)")
 	}
 	reqs := f.requestsTo("/users/hubot/repos")
 	if len(reqs) != 1 || reqs[0].Query.Get("type") != "owner" || reqs[0].Query.Get("per_page") != "100" || reqs[0].Query.Get("page") != "1" {
 		t.Errorf("listing requests = %+v", reqs)
 	}
-	for _, ns := range nss {
-		if ns.Default {
-			t.Errorf("%s is marked default without a pinned repository", ns.Name)
+	if owner := nss[0]; !owner.Default || owner.Label != "owner" || owner.Comment != "every repository of the user" {
+		t.Errorf("owner namespace = %+v, want the default, labelled owner", owner)
+	}
+	for _, ns := range nss[1:] {
+		if ns.Default || ns.Label != "repository" {
+			t.Errorf("%+v: a repository of an owner is neither the default nor an owner", ns)
 		}
 	}
 }
 
-// An organization owner is listed through /orgs/{owner}/repos, private
-// repositories included with a token.
+// An organization owner comes first too, its repositories listed through
+// /orgs/{owner}/repos, private ones included with a token.
 func TestNamespacesOfOrganizationOwner(t *testing.T) {
 	f := newFakeGitHub(t)
 	c := f.openDSN(t, f.dsn("acme", ""), false, fakeToken)
@@ -64,8 +68,11 @@ func TestNamespacesOfOrganizationOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := namespaceNames(nss); !slices.Equal(got, []string{"acme/alpha", "acme/beta"}) {
+	if got := namespaceNames(nss); !slices.Equal(got, []string{"acme", "acme/alpha", "acme/beta"}) {
 		t.Errorf("Namespaces = %v", got)
+	}
+	if owner := nss[0]; !owner.Default || owner.Label != "owner" || owner.Comment != "every repository of the organization" {
+		t.Errorf("owner namespace = %+v", owner)
 	}
 	reqs := f.requestsTo("/orgs/acme/repos")
 	if len(reqs) != 1 || reqs[0].Query.Get("type") != "all" {
@@ -76,9 +83,10 @@ func TestNamespacesOfOrganizationOwner(t *testing.T) {
 	}
 }
 
-// Without an owner the token's own repositories are listed, with the ones
-// it collaborates on and its organizations'; with the token's own login as
-// owner, only the ones it owns.
+// Without an owner the token's login is the owner namespace and its own
+// repositories are listed, with the ones it collaborates on and its
+// organizations'; with the token's own login as owner, only the ones it
+// owns.
 func TestNamespacesOfTheTokenOwner(t *testing.T) {
 	f := newFakeGitHub(t)
 	c := f.openDSN(t, f.dsn("", ""), false, fakeToken)
@@ -86,9 +94,12 @@ func TestNamespacesOfTheTokenOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"acme/alpha", "acme/beta", "hubot/scripts", "octo/gadgets", "octo/widgets"}
+	want := []string{"octo", "acme/alpha", "acme/beta", "hubot/scripts", "octo/gadgets", "octo/widgets"}
 	if got := namespaceNames(nss); !slices.Equal(got, want) {
 		t.Errorf("Namespaces = %v, want %v", got, want)
+	}
+	if owner := nss[0]; !owner.Default || owner.Label != "owner" || owner.Comment != "every repository of the user" {
+		t.Errorf("the token's owner namespace = %+v", owner)
 	}
 	reqs := f.requestsTo("/user/repos")
 	if len(reqs) != 1 || reqs[0].Query.Get("affiliation") != "owner,collaborator,organization_member" {
@@ -101,7 +112,7 @@ func TestNamespacesOfTheTokenOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := namespaceNames(nss); !slices.Equal(got, []string{"octo/gadgets", "octo/widgets"}) {
+	if got := namespaceNames(nss); !slices.Equal(got, []string{"octo", "octo/gadgets", "octo/widgets"}) {
 		t.Errorf("Namespaces of the token's login = %v", got)
 	}
 	reqs = f.requestsTo("/user/repos")
@@ -164,16 +175,32 @@ func TestCollectionsOfMissingRepositoryIsErrNotFound(t *testing.T) {
 	wantKind(t, "Collections of a bare name", err, driver.ErrNotFound)
 }
 
-// Without a pinned repository the namespace must be given.
-func TestCollectionsWithoutRepositoryIsErrSyntax(t *testing.T) {
+// Without a pinned repository an empty namespace is the DSN's owner, so
+// the owner-wide collections come back; a repository namespace still gives
+// the repository's ten.
+func TestCollectionsWithoutRepositoryAreTheOwners(t *testing.T) {
 	f := newFakeGitHub(t)
 	c := f.openDSN(t, f.dsn("octo", ""), false, fakeToken)
-	_, err := c.Collections(context.Background(), driver.NamespaceRef{})
-	wantKind(t, "Collections without a namespace", err, driver.ErrSyntax)
-	cols, err := c.Collections(context.Background(), driver.NamespaceRef{Name: "octo/gadgets"})
+	cols, err := c.Collections(context.Background(), driver.NamespaceRef{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := collectionRefNames(cols); !slices.Equal(got, ownerCollectionNames()) || cols[0].Ref.Namespace != "octo" {
+		t.Errorf("Collections without a namespace = %v in %q, want the owner's", got, cols[0].Ref.Namespace)
+	}
+	cols, err = c.Collections(context.Background(), driver.NamespaceRef{Name: "octo/gadgets"})
 	if err != nil || len(cols) != 10 {
 		t.Errorf("Collections of octo/gadgets = %d, %v", len(cols), err)
 	}
+}
+
+// collectionRefNames lists the names of collections.
+func collectionRefNames(cols []driver.Collection) []string {
+	out := make([]string, len(cols))
+	for i, col := range cols {
+		out[i] = col.Ref.Name
+	}
+	return out
 }
 
 func fieldByName(t *testing.T, s *driver.CollectionSchema, name string) driver.Field {

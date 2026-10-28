@@ -84,15 +84,16 @@ func TestCompleteValuesOfKnownMembers(t *testing.T) {
 	}
 }
 
-// After "repo":" the repository names come from Namespaces, kept for later
-// completions; Invalidate makes the next one list them again.
+// After "repo":" the names come from Namespaces, the owner first and then
+// its repositories, kept for later completions; Invalidate makes the next
+// one list them again.
 func TestCompleteRepositoryNamesAreCached(t *testing.T) {
 	f := newFakeGitHub(t)
 	c := f.openDSN(t, f.dsn("octo", ""), false, fakeToken)
 	f.resetLog()
 	listings := func() int { return len(f.requestsTo("/user/repos")) }
 	got := labelsOf(t, completeAt(t, c, `{"collection":"issues","repo":"`), "namespace")
-	if want := []string{"octo/gadgets", "octo/widgets"}; !reflect.DeepEqual(got, want) {
+	if want := []string{"octo", "octo/gadgets", "octo/widgets"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("repositories = %v, want %v", got, want)
 	}
 	if listings() != 1 {
@@ -108,7 +109,7 @@ func TestCompleteRepositoryNamesAreCached(t *testing.T) {
 		t.Errorf("%d listings after three completions, want the names kept", listings())
 	}
 	c.Invalidate()
-	if got := labelsOf(t, completeAt(t, c, `{"repo":"`), "namespace"); len(got) != 2 {
+	if got := labelsOf(t, completeAt(t, c, `{"repo":"`), "namespace"); len(got) != 3 {
 		t.Errorf("repositories after Invalidate = %v", got)
 	}
 	if listings() != 2 {
@@ -136,15 +137,26 @@ func TestCompleteRepositoryNamesAreCached(t *testing.T) {
 	if got := completeAt(t, anonymous, `{"repo":"`); len(got) != 0 {
 		t.Errorf("anonymous repositories = %v", got)
 	}
+	// An organization owner is offered first too, and a prefix that is the
+	// owner's name keeps the owner and its repositories.
+	org := f.openDSN(t, f.dsn("acme", ""), false, fakeToken)
+	if got := labelsOf(t, completeAt(t, org, `{"repo":"`), "namespace"); !reflect.DeepEqual(got, []string{"acme", "acme/alpha", "acme/beta"}) {
+		t.Errorf("organization names = %v", got)
+	}
+	if got := labelsOf(t, completeAt(t, org, `{"repo":"acme/`), "namespace"); !reflect.DeepEqual(got, []string{"acme/alpha", "acme/beta"}) {
+		t.Errorf("names under acme/ = %v", got)
+	}
 }
 
 // At a key position (after "{" or ",") the op, the op's members and, for
 // a list, the collection's parameters are offered; for a get, the key
-// column.
+// members, full_name and repository (the keys of an owner's collections)
+// among them.
 func TestCompleteKeysAtAKeyPosition(t *testing.T) {
 	f := newFakeGitHub(t)
 	c := f.open(t, false)
 	listKeys := []string{"op", "collection", "repo", "limit"}
+	getKeys := []string{"op", "collection", "repo", "key", "number", "id", "sha", "name", "full_name", "repository"}
 	issueParams := collectionByName("issues").params
 	tests := []struct {
 		text string
@@ -159,9 +171,11 @@ func TestCompleteKeysAtAKeyPosition(t *testing.T) {
 		{`{"op":"list","collection":"issues","la`, []string{"labels"}},
 		{`{"op":"list","collection":"issues","S`, []string{"state", "since", "sort"}},
 		{`{"op":"list",`, listKeys},
-		{`{"op":"get","collection":"issues",`, []string{"op", "collection", "repo", "key", "number", "id", "sha", "name"}},
+		{`{"op":"get","collection":"issues",`, getKeys},
 		{`{"op":"get","collection":"tags","n`, []string{"number", "name"}},
-		{`{"op":"get",`, []string{"op", "collection", "repo", "key", "number", "id", "sha", "name"}},
+		{`{"op":"get",`, getKeys},
+		{`{"op":"get","collection":"repositories","f`, []string{"full_name"}},
+		{`{"op":"get","collection":"issues","rep`, []string{"repo", "repository"}},
 		{`{"op":"search",`, []string{"op", "type", "q", "sort", "order", "limit"}},
 		{`{"op":"rest",`, []string{"op", "method", "path", "params", "body", "limit"}},
 		{`{"op":"graphql",`, []string{"op", "query", "variables"}},

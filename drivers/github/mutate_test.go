@@ -738,7 +738,7 @@ func TestWritesInvalidateTheCompletionNames(t *testing.T) {
 		defer c.catalog.mu.Unlock()
 		return c.catalog.names != nil
 	}
-	if got := repos(t); !reflect.DeepEqual(got, []string{"octo/gadgets", "octo/widgets"}) {
+	if got := repos(t); !reflect.DeepEqual(got, []string{"octo", "octo/gadgets", "octo/widgets"}) {
 		t.Fatalf("repositories = %v", got)
 	}
 	if listings() != 1 || !cached() {
