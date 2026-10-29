@@ -984,13 +984,22 @@ func (f *fakeGitHub) findRepo(owner, name string) *fakeRepo {
 	return nil
 }
 
+// ownerType is the kind of an owner, User or Organization, found without
+// regard to case.
 func (f *fakeGitHub) ownerType(login string) (string, bool) {
+	_, typ, ok := f.ownerLogin(login)
+	return typ, ok
+}
+
+// ownerLogin finds an owner without regard to case and gives back its
+// login as seeded, the spelling GitHub answers with, and its kind.
+func (f *fakeGitHub) ownerLogin(login string) (string, string, bool) {
 	for l, typ := range f.owners {
 		if strings.EqualFold(l, login) {
-			return typ, true
+			return l, typ, true
 		}
 	}
-	return "", false
+	return "", "", false
 }
 
 func (f *fakeGitHub) route(w http.ResponseWriter, r *http.Request, body []byte, authed bool) {
@@ -1042,14 +1051,14 @@ func (f *fakeGitHub) route(w http.ResponseWriter, r *http.Request, body []byte, 
 			notFound(w)
 		}
 	case seg[0] == "users" && len(seg) >= 2:
-		typ, ok := f.ownerType(seg[1])
+		login, typ, ok := f.ownerLogin(seg[1])
 		if !ok {
 			notFound(w)
 			return
 		}
 		switch {
 		case len(seg) == 2:
-			u := userObj(seg[1])
+			u := userObj(login)
 			u["type"] = typ
 			f.writeJSON(w, r, http.StatusOK, u)
 		case len(seg) == 3 && seg[2] == "repos":
@@ -1840,21 +1849,94 @@ func matchesCreated(created, q string) bool {
 
 // Search.
 
+// searchTerms splits a search text into qualifiers (name:value, the value
+// unquoted) and free words, honouring "quoted phrases".
+func searchTerms(q string) (qualifiers map[string][]string, words []string) {
+	qualifiers = map[string][]string{}
+	var tok strings.Builder
+	quoted := false
+	flush := func() {
+		t := tok.String()
+		tok.Reset()
+		if t == "" {
+			return
+		}
+		if k, v, ok := strings.Cut(t, ":"); ok && k != "" && !strings.HasPrefix(t, "http") {
+			qualifiers[k] = append(qualifiers[k], strings.Trim(v, `"`))
+			return
+		}
+		words = append(words, strings.ToLower(strings.Trim(t, `"`)))
+	}
+	for _, r := range q {
+		switch {
+		case r == '"':
+			quoted = !quoted
+			tok.WriteRune(r)
+		case !quoted && (r == ' ' || r == '\t'):
+			flush()
+		default:
+			tok.WriteRune(r)
+		}
+	}
+	flush()
+	return qualifiers, words
+}
+
+// inRange applies a search range qualifier (>=x, >x, <=x, <x, x) to a
+// number or an RFC 3339 instant.
+func inRange(qual string, actual any) bool {
+	op, bound := "", qual
+	for _, p := range []string{">=", "<=", ">", "<"} {
+		if strings.HasPrefix(qual, p) {
+			op, bound = p, qual[len(p):]
+			break
+		}
+	}
+	var cmp int
+	if t, ok := actual.(time.Time); ok {
+		b, err := time.Parse(time.RFC3339, bound)
+		if err != nil {
+			if b, err = time.Parse("2006-01-02", bound); err != nil {
+				return false
+			}
+		}
+		cmp = t.Compare(b)
+	} else {
+		b, err := strconv.ParseInt(bound, 10, 64)
+		if err != nil {
+			return false
+		}
+		n, _ := actual.(int64)
+		switch {
+		case n < b:
+			cmp = -1
+		case n > b:
+			cmp = 1
+		}
+	}
+	switch op {
+	case ">=":
+		return cmp >= 0
+	case ">":
+		return cmp > 0
+	case "<=":
+		return cmp <= 0
+	case "<":
+		return cmp < 0
+	}
+	return cmp == 0
+}
+
+// search serves /search/{kind}. Private repositories are searched with the
+// token only, as GitHub does for the ones the token can see.
 func (f *fakeGitHub) search(w http.ResponseWriter, r *http.Request, kind string) {
 	q := r.URL.Query()
 	if strings.TrimSpace(q.Get("q")) == "" {
 		writeError(w, http.StatusUnprocessableEntity, "Validation Failed", object{"resource": "Search", "field": "q", "code": "missing"})
 		return
 	}
-	var qualifiers = map[string][]string{}
-	var words []string
-	for _, tok := range strings.Fields(q.Get("q")) {
-		if k, v, ok := strings.Cut(tok, ":"); ok && k != "" && !strings.HasPrefix(tok, "http") {
-			qualifiers[k] = append(qualifiers[k], v)
-			continue
-		}
-		words = append(words, strings.ToLower(tok))
-	}
+	authed := r.Header.Get("Authorization") == "Bearer "+f.token
+	qualifiers, words := searchTerms(q.Get("q"))
 	has := func(k, v string) bool { return slices.Contains(qualifiers[k], v) }
 	wordsIn := func(texts ...string) bool {
 		joined := strings.ToLower(strings.Join(texts, " "))
@@ -1865,13 +1947,42 @@ func (f *fakeGitHub) search(w http.ResponseWriter, r *http.Request, kind string)
 		}
 		return true
 	}
+	// GitHub ORs repo:, user: and org: together: an item matches when its
+	// repository is one named, or its owner is.
 	repoMatches := func(rp *fakeRepo) bool {
-		if rs := qualifiers["repo"]; len(rs) > 0 && !slices.ContainsFunc(rs, func(s string) bool { return strings.EqualFold(s, rp.full()) }) {
-			return false
+		var any, matched bool
+		if rs := qualifiers["repo"]; len(rs) > 0 {
+			any = true
+			matched = slices.ContainsFunc(rs, func(s string) bool { return strings.EqualFold(s, rp.full()) })
 		}
 		for _, k := range []string{"user", "org"} {
-			if os := qualifiers[k]; len(os) > 0 && !slices.ContainsFunc(os, func(s string) bool { return strings.EqualFold(s, rp.owner) }) {
-				return false
+			if os := qualifiers[k]; len(os) > 0 {
+				any = true
+				matched = matched || slices.ContainsFunc(os, func(s string) bool { return strings.EqualFold(s, rp.owner) })
+			}
+		}
+		return !any || matched
+	}
+	// ranges applies every range qualifier named in fields to the item.
+	ranges := func(it object, fields map[string]string) bool {
+		for qual, member := range fields {
+			for _, v := range qualifiers[qual] {
+				var actual any
+				switch x := it[member].(type) {
+				case string:
+					t, err := time.Parse(time.RFC3339, x)
+					if err != nil {
+						return false
+					}
+					actual = t
+				case nil:
+					return false
+				default:
+					actual = num(it, member)
+				}
+				if !inRange(v, actual) {
+					return false
+				}
 			}
 		}
 		return true
@@ -1880,7 +1991,7 @@ func (f *fakeGitHub) search(w http.ResponseWriter, r *http.Request, kind string)
 	switch kind {
 	case "issues":
 		for _, rp := range f.repos {
-			if !repoMatches(rp) || rp.private {
+			if !repoMatches(rp) || (rp.private && !authed) {
 				continue
 			}
 			for _, is := range rp.issues {
@@ -1894,13 +2005,25 @@ func (f *fakeGitHub) search(w http.ResponseWriter, r *http.Request, kind string)
 					continue
 				}
 				labels := memberNames(is, "labels", "name")
-				if slices.ContainsFunc(qualifiers["label"], func(l string) bool { return !slices.Contains(labels, strings.Trim(l, `"`)) }) {
+				if slices.ContainsFunc(qualifiers["label"], func(l string) bool { return !slices.Contains(labels, l) }) {
 					continue
 				}
 				if as := qualifiers["author"]; len(as) > 0 && !slices.Contains(as, str(sub(is, "user"), "login")) {
 					continue
 				}
-				if as := qualifiers["assignee"]; len(as) > 0 && !slices.ContainsFunc(as, func(a string) bool { return slices.Contains(memberNames(is, "assignees", "login"), a) }) {
+				assignees := memberNames(is, "assignees", "login")
+				if as := qualifiers["assignee"]; len(as) > 0 && !slices.ContainsFunc(as, func(a string) bool { return slices.Contains(assignees, a) }) {
+					continue
+				}
+				ms := sub(is, "milestone")
+				if m := qualifiers["milestone"]; len(m) > 0 && (ms == nil || !slices.Contains(m, str(ms, "title"))) {
+					continue
+				}
+				switch {
+				case has("no", "assignee") && len(assignees) > 0, has("no", "milestone") && ms != nil, has("no", "label") && len(labels) > 0:
+					continue
+				}
+				if !ranges(is, map[string]string{"comments": "comments", "created": "created_at", "updated": "updated_at", "closed": "closed_at"}) {
 					continue
 				}
 				if !wordsIn(str(is, "title"), str(is, "body")) {
@@ -1920,7 +2043,7 @@ func (f *fakeGitHub) search(w http.ResponseWriter, r *http.Request, kind string)
 		items = sortItems(items, sortField, q.Get("order") != "asc")
 	case "repositories":
 		for _, rp := range f.repos {
-			if rp.private || !repoMatches(rp) {
+			if (rp.private && !authed) || !repoMatches(rp) {
 				continue
 			}
 			if ls := qualifiers["language"]; len(ls) > 0 && !slices.ContainsFunc(ls, func(l string) bool { return strings.EqualFold(l, rp.language) }) {
@@ -1937,23 +2060,46 @@ func (f *fakeGitHub) search(w http.ResponseWriter, r *http.Request, kind string)
 			items = sortItems(items, "stargazers_count", q.Get("order") != "asc")
 		}
 	case "commits":
+		if len(words) == 0 {
+			// GitHub's commit search needs text beside the qualifiers.
+			writeError(w, http.StatusUnprocessableEntity, "Validation Failed", object{"resource": "Search", "field": "q", "code": "invalid", "message": "The search needs a term besides the qualifiers"})
+			return
+		}
 		for _, rp := range f.repos {
-			if rp.private || !repoMatches(rp) {
+			if (rp.private && !authed) || !repoMatches(rp) {
 				continue
 			}
 			for _, c := range rp.commits {
+				commit := sub(c, "commit")
+				author, committer := sub(commit, "author"), sub(commit, "committer")
 				if as := qualifiers["author"]; len(as) > 0 && !slices.Contains(as, str(sub(c, "author"), "login")) {
 					continue
 				}
-				if !wordsIn(str(sub(c, "commit"), "message")) {
+				if cs := qualifiers["committer"]; len(cs) > 0 && !slices.Contains(cs, str(sub(c, "committer"), "login")) {
 					continue
 				}
-				it := object{"score": 1.0, "repository": f.repoObject(rp)}
+				if ns := qualifiers["author-name"]; len(ns) > 0 && !slices.Contains(ns, str(author, "name")) {
+					continue
+				}
+				if es := qualifiers["author-email"]; len(es) > 0 && !slices.Contains(es, str(author, "email")) {
+					continue
+				}
+				dates := object{"author_date": author["date"], "committer_date": committer["date"]}
+				if !ranges(dates, map[string]string{"author-date": "author_date", "committer-date": "committer_date"}) {
+					continue
+				}
+				if !wordsIn(str(commit, "message")) {
+					continue
+				}
+				it := object{"score": 1.0, "repository": f.repoObject(rp), "author_date": author["date"], "committer_date": committer["date"]}
 				for k, v := range c {
 					it[k] = v
 				}
 				items = append(items, it)
 			}
+		}
+		if field := map[string]string{"author-date": "author_date", "committer-date": "committer_date"}[q.Get("sort")]; field != "" {
+			items = sortItems(items, field, q.Get("order") != "asc")
 		}
 	default:
 		notFound(w)

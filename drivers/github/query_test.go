@@ -194,7 +194,7 @@ func TestQueryLimitTruncates(t *testing.T) {
 }
 
 // The repository comes from the "repo" member, else Query.Namespace, else
-// the DSN.
+// the DSN; without a pinned repository the DSN's owner is the scope.
 func TestListRepositoryResolution(t *testing.T) {
 	f := newFakeGitHub(t)
 	c := f.open(t, false)
@@ -219,11 +219,21 @@ func TestListRepositoryResolution(t *testing.T) {
 	_, err := c.Query(context.Background(), driver.Query{Text: `{"collection":"issues","repo":"nobody/nothing"}`})
 	wantKind(t, "a missing repository", err, driver.ErrNotFound)
 	_, err = c.Query(context.Background(), driver.Query{Text: `{"collection":"issues","repo":"not-a-repo"}`})
-	wantKind(t, "a repo that is not owner/repo", err, driver.ErrSyntax)
+	wantKind(t, "a repo that is an unknown owner", err, driver.ErrNotFound)
+	if de := asDriverError(t, err); de.Code != "404" {
+		t.Errorf("an unknown owner has code %q, want 404", de.Code)
+	}
+	_, err = c.Query(context.Background(), driver.Query{Text: `{"collection":"issues","repo":"a/b/c"}`})
+	wantKind(t, "a repo that is neither owner/repo nor an owner", err, driver.ErrSyntax)
+	_, err = c.Query(context.Background(), driver.Query{Text: `{"collection":"issues","repo":"-bad"}`})
+	wantKind(t, "a repo that is not a valid owner", err, driver.ErrSyntax)
 
 	owner := f.openDSN(t, f.dsn("acme", ""), false, fakeToken)
-	_, err = owner.Query(context.Background(), driver.Query{Text: `{"collection":"issues"}`})
-	wantKind(t, "a list without any repository", err, driver.ErrSyntax)
+	f.resetLog()
+	cols, rows, _ = queryWith(t, owner, driver.Query{Text: `{"collection":"issues"}`})
+	if len(rows) != 5 || cols[0].Source.Namespace != "acme" || len(f.requestsTo("/search/issues")) != 1 {
+		t.Errorf("a list without any repository is the owner's: %d rows from %+v, %+v", len(rows), cols[0].Source, f.log())
+	}
 	_, rows, _ = queryWith(t, owner, driver.Query{Text: `{"collection":"issues"}`, Namespace: "acme/beta"})
 	if len(rows) != 1 {
 		t.Errorf("acme/beta through the namespace: %d rows", len(rows))

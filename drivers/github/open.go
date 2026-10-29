@@ -47,14 +47,6 @@ type dsnConfig struct {
 	plaintextToken bool
 }
 
-// repoName is the namespace name of the pinned repository, or "".
-func (d dsnConfig) repoName() string {
-	if d.repo == "" {
-		return ""
-	}
-	return d.owner + "/" + d.repo
-}
-
 // Open builds the client and pings it once, so a bad endpoint or a bad
 // token fail here rather than on the first query. Errors never contain the
 // token.

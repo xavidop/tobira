@@ -1,6 +1,7 @@
 package github
 
 import (
+	"context"
 	"errors"
 	"net/url"
 	"reflect"
@@ -128,7 +129,7 @@ func TestPlanBrowse(t *testing.T) {
 	}
 	plan := func(t *testing.T, col string, opts driver.BrowseOptions, limit int) (listRequest, []driver.Condition) {
 		t.Helper()
-		req, local, err := c.planBrowse("browse", collectionByName(col), "octo", "widgets", opts, limit)
+		req, local, err := c.planBrowse(context.Background(), "browse", collectionByName(col), scope{"octo", "widgets"}, opts, limit)
 		if err != nil {
 			t.Fatalf("planBrowse: %v", err)
 		}
@@ -251,7 +252,7 @@ func TestPlanBrowse(t *testing.T) {
 		for _, tc := range tests {
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
-				_, _, err := c.planBrowse("browse", collectionByName(tc.col), "octo", "widgets", tc.opts, 100)
+				_, _, err := c.planBrowse(context.Background(), "browse", collectionByName(tc.col), scope{"octo", "widgets"}, tc.opts, 100)
 				if !errors.Is(err, tc.kind) {
 					t.Fatalf("planBrowse = %v, want %v", err, tc.kind)
 				}

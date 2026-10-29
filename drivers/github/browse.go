@@ -28,17 +28,36 @@ const (
 	maxRequests = 10
 )
 
-// listRequest is a list endpoint call with its parameters fixed.
+// listRequest is a paginated call with its parameters fixed: a
+// repository's list endpoint, an owner's repository listing (listPath) or
+// a search (the qualifiers in query["q"]).
 type listRequest struct {
 	col         *collection
-	owner, repo string
+	owner, repo string     // repo "" = owner-wide
 	query       url.Values // without per_page and page
 	perPage     int
 	local       string // the conditions applied in tobira, rendered for the hash
+	listPath    string // an owner's repository listing endpoint
 }
 
 // path is the endpoint path.
-func (r listRequest) path() string { return r.col.list(r.owner, r.repo) }
+func (r listRequest) path() string {
+	switch {
+	case r.col.search != nil:
+		return r.col.search.endpoint
+	case r.col.listing:
+		return r.listPath
+	}
+	return r.col.list(r.owner, r.repo)
+}
+
+// envelope names the member holding the items of a page.
+func (r listRequest) envelope() string {
+	if r.col.search != nil {
+		return "items"
+	}
+	return r.col.envelope
+}
 
 // pageQuery is the query of one page.
 func (r listRequest) pageQuery(page int) url.Values {
@@ -55,7 +74,7 @@ func (r listRequest) pageQuery(page int) url.Values {
 // parameters and the same conditions applied in tobira.
 func (r listRequest) hash() string {
 	h := fnv.New32a()
-	_, _ = h.Write([]byte(r.col.name + "|" + strings.ToLower(r.owner+"/"+r.repo) + "|" + strconv.Itoa(r.perPage) + "|" + r.query.Encode() + "|" + r.local))
+	_, _ = h.Write([]byte(r.col.name + "|" + strings.ToLower(r.owner+"/"+r.repo) + "|" + strings.ToLower(r.path()) + "|" + strconv.Itoa(r.perPage) + "|" + r.query.Encode() + "|" + r.local))
 	return strconv.FormatUint(uint64(h.Sum32()), 16)
 }
 
@@ -71,7 +90,7 @@ func renderConditions(conds []driver.Condition) string {
 // fetchPage reads one page of items, dropping pull requests from an issues
 // listing.
 func (c *conn) fetchPage(ctx context.Context, op string, r listRequest, page int) ([]json.RawMessage, bool, error) {
-	items, next, err := c.client.page(ctx, r.path(), r.pageQuery(page), r.col.envelope)
+	items, next, err := c.client.page(ctx, r.path(), r.pageQuery(page), r.envelope())
 	if err != nil {
 		return nil, false, c.fail(ctx, op, err)
 	}
@@ -125,7 +144,7 @@ func (c *conn) Browse(ctx context.Context, ref driver.CollectionRef, opts driver
 	if err := c.check(ctx, op); err != nil {
 		return nil, err
 	}
-	col, owner, repo, err := c.collectionRef(ctx, op, ref)
+	col, s, err := c.collectionRef(ctx, op, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +157,7 @@ func (c *conn) Browse(ctx context.Context, ref driver.CollectionRef, opts driver
 		warnings = append(warnings, fmt.Sprintf("the page size was cut from %d to %d rows", limit, maxPage))
 		limit = maxPage
 	}
-	req, local, err := c.planBrowse(op, col, owner, repo, opts, limit)
+	req, local, err := c.planBrowse(ctx, op, col, s, opts, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +165,7 @@ func (c *conn) Browse(ctx context.Context, ref driver.CollectionRef, opts driver
 	if err != nil {
 		return nil, err
 	}
-	refOut := driver.CollectionRef{Namespace: owner + "/" + repo, Name: col.name}
+	refOut := driver.CollectionRef{Namespace: s.name(), Name: col.name}
 	rows := make([]driver.Row, 0, limit)
 	page, skip := cur.page, cur.skip
 	scanned, requests, more := 0, 0, false
@@ -208,14 +227,39 @@ func (c *conn) Browse(ctx context.Context, ref driver.CollectionRef, opts driver
 }
 
 // planBrowse turns the Browse options into the list request and the
-// conditions left for tobira to apply.
-func (c *conn) planBrowse(op string, col *collection, owner, repo string, opts driver.BrowseOptions, limit int) (listRequest, []driver.Condition, error) {
+// conditions left for tobira to apply. A repository collection takes its
+// endpoint's parameters; an owner-wide one takes search qualifiers, or the
+// repository listing's sort.
+func (c *conn) planBrowse(ctx context.Context, op string, col *collection, s scope, opts driver.BrowseOptions, limit int) (listRequest, []driver.Condition, error) {
 	if opts.Filter.Raw != "" {
 		return listRequest{}, nil, unsupportedErr(op, "a raw filter is not supported: run a list query with the endpoint's own parameters")
 	}
-	query := url.Values{}
+	req := listRequest{col: col, owner: s.owner, repo: s.repo, query: url.Values{}}
 	for k, v := range col.defaults {
-		query[k] = v
+		req.query[k] = v
+	}
+	var qualifiers []string
+	var searchText []string // free text of a commit search (message contains …)
+	ownerBase := ""
+	if col.search != nil {
+		base, err := c.ownerQualifier(ctx, op, s.owner)
+		if err != nil {
+			return listRequest{}, nil, err
+		}
+		ownerBase = base
+		if col.search.base != "" {
+			qualifiers = append(qualifiers, col.search.base)
+		}
+	}
+	if col.listing {
+		path, query, err := c.ownerListing(ctx, op, s.owner)
+		if err != nil {
+			return listRequest{}, nil, err
+		}
+		req.listPath = path
+		for k, v := range query {
+			req.query[k] = v
+		}
 	}
 	var local []driver.Condition
 	pushed := map[string]bool{} // parameters already set by a condition
@@ -223,47 +267,93 @@ func (c *conn) planBrowse(op string, col *collection, owner, repo string, opts d
 		if col.col(cond.Field) == nil {
 			return listRequest{}, nil, syntaxErr(op, "unknown field %q in %s", cond.Field, col.name)
 		}
+		if col.search != nil {
+			q := col.search.qualifiers[cond.Field]
+			if cond.Field == "repository" {
+				q = repoQualifier(s.owner)
+			}
+			if q != nil {
+				if v, ok := q(cond); ok {
+					if cond.Field == "repository" {
+						// GitHub ORs user:, org: and repo: together: a
+						// repository replaces the owner.
+						ownerBase = ""
+					}
+					qualifiers = append(qualifiers, v)
+					continue
+				}
+			}
+			if col.search.endpoint == searchCommits && cond.Field == "message" && cond.Op == driver.OpContains {
+				if text, ok := text(cond.Value); ok && strings.TrimSpace(text) != "" {
+					searchText = append(searchText, quoteQualifier(strings.TrimSpace(text)))
+					local = append(local, cond) // the search matches words; the substring check still runs
+					continue
+				}
+			}
+			local = append(local, cond)
+			continue
+		}
 		if pd, ok := col.filters[cond.Field]; ok && !pushed[pd.param] {
 			if v, ok := pd.encode(cond); ok {
-				query.Set(pd.param, v)
+				req.query.Set(pd.param, v)
 				pushed[pd.param] = true
 				continue
 			}
 		}
 		local = append(local, cond)
 	}
+	if col.search != nil {
+		if col.search.endpoint == searchCommits && len(searchText) == 0 {
+			return listRequest{}, nil, unsupportedErr(op, "GitHub's commit search needs text: filter %s by message contains a word or phrase (a list query takes it in q)", col.name)
+		}
+		parts := append(searchText, ownerBase)
+		parts = append(parts, qualifiers...)
+		req.query.Set("q", joinTerms(parts...))
+	}
+	sorts, direction := col.sorts, "direction"
+	if col.search != nil {
+		sorts, direction = col.search.sorts, "order"
+	}
 	switch len(opts.Sort) {
 	case 0:
 	case 1:
-		param, ok := col.sorts[opts.Sort[0].Field]
+		param, ok := sorts[opts.Sort[0].Field]
 		if !ok {
-			return listRequest{}, nil, unsupportedErr(op, "GitHub cannot sort %s by %q%s", col.name, opts.Sort[0].Field, sortableHint(col))
+			return listRequest{}, nil, unsupportedErr(op, "GitHub cannot sort %s by %q%s", col.name, opts.Sort[0].Field, sortableHintOf(col, sorts))
 		}
-		query.Set("sort", param)
+		req.query.Set("sort", param)
 		if opts.Sort[0].Desc {
-			query.Set("direction", "desc")
+			req.query.Set(direction, "desc")
 		} else {
-			query.Set("direction", "asc")
+			req.query.Set(direction, "asc")
 		}
 	default:
 		return listRequest{}, nil, unsupportedErr(op, "GitHub sorts by one field at a time")
 	}
-	perPage := min(limit, maxPerPage)
+	req.perPage = min(limit, maxPerPage)
 	if col.dropPullRequests {
 		// Pull requests are dropped from the page after it is read, so a
 		// small page could cost a request per row: read full pages.
-		perPage = maxPerPage
+		req.perPage = maxPerPage
 	}
-	return listRequest{col: col, owner: owner, repo: repo, query: query, perPage: perPage, local: renderConditions(local)}, local, nil
+	req.local = renderConditions(local)
+	return req, local, nil
 }
 
 // sortableHint lists what a collection can be sorted by.
 func sortableHint(col *collection) string {
-	if len(col.sorts) == 0 {
+	if col.search != nil {
+		return sortableHintOf(col, col.search.sorts)
+	}
+	return sortableHintOf(col, col.sorts)
+}
+
+func sortableHintOf(col *collection, sorts map[string]string) string {
+	if len(sorts) == 0 {
 		return ": it lists " + col.name + " in GitHub's own order only"
 	}
-	fields := make([]string, 0, len(col.sorts))
-	for f := range col.sorts {
+	fields := make([]string, 0, len(sorts))
+	for f := range sorts {
 		fields = append(fields, f)
 	}
 	sort.Strings(fields)

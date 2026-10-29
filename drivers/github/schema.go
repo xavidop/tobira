@@ -84,7 +84,38 @@ type collection struct {
 	dropPullRequests       bool
 	insert, update, delete *mutation
 	comment                string
+	// Owner-wide collections (an owner namespace) read every repository of
+	// a user or organization: search holds the search endpoint and the
+	// qualifiers, listing marks the owner's repository listing. keys names
+	// the primary key when it is not keyCol alone (repository and number).
+	search  *searchSpec
+	listing bool
+	keys    []string
 }
+
+// primaryKey is the collection's key columns.
+func (c *collection) primaryKey() []string {
+	if len(c.keys) > 0 {
+		return c.keys
+	}
+	return []string{c.keyCol}
+}
+
+// searchCommits is the commit search endpoint, which needs free text.
+const searchCommits = "/search/commits"
+
+// searchSpec describes an owner-wide collection read through GitHub search.
+type searchSpec struct {
+	endpoint   string               // /search/issues or /search/commits
+	base       string               // qualifiers always sent, such as is:issue
+	qualifiers map[string]qualifier // Browse conditions the search can take
+	sorts      map[string]string    // fields the search can order by, with the sort value
+	peer       string               // the repository collection edits go to, "" = read-only
+}
+
+// qualifier renders a Browse condition as a search qualifier, or false when
+// the operator or value cannot be expressed.
+type qualifier func(cond driver.Condition) (string, bool)
 
 // col finds a column by name.
 func (c *collection) col(name string) *column {
@@ -645,4 +676,174 @@ func searchColumns(typ string) []column {
 		return repositoryColumns
 	}
 	return nil
+}
+
+// Search qualifier encoders.
+
+// quoteQualifier renders a qualifier value, quoting it when it has spaces.
+func quoteQualifier(s string) string {
+	if strings.ContainsAny(s, " \t\"") {
+		return `"` + strings.ReplaceAll(s, `"`, `\"`) + `"`
+	}
+	return s
+}
+
+// eqQualifier pushes an equality as name:value.
+func eqQualifier(name string) qualifier {
+	return func(cond driver.Condition) (string, bool) {
+		if cond.Op != driver.OpEq {
+			return "", false
+		}
+		s, ok := text(cond.Value)
+		if !ok || s == "" {
+			return "", false
+		}
+		return name + ":" + quoteQualifier(s), true
+	}
+}
+
+// eqOrNoneQualifier pushes an equality as name:value, is null as no:name
+// (assignee, milestone, label).
+func eqOrNoneQualifier(name string) qualifier {
+	return func(cond driver.Condition) (string, bool) {
+		switch cond.Op {
+		case driver.OpEq, driver.OpContains:
+			s, ok := text(cond.Value)
+			if !ok || s == "" {
+				return "", false
+			}
+			return name + ":" + quoteQualifier(s), true
+		case driver.OpIsNull:
+			return "no:" + name, true
+		}
+		return "", false
+	}
+}
+
+// rangeQualifier pushes comparisons as name:>=value and the like; times are
+// rendered in GitHub's date-time form.
+func rangeQualifier(name string) qualifier {
+	return func(cond driver.Condition) (string, bool) {
+		var s string
+		if t, ok := cond.Value.AsTime(); ok {
+			s = t.UTC().Format("2006-01-02T15:04:05Z")
+		} else if v, ok := text(cond.Value); ok && v != "" {
+			s = v
+		} else {
+			return "", false
+		}
+		switch cond.Op {
+		case driver.OpEq:
+			return name + ":" + s, true
+		case driver.OpGe:
+			return name + ":>=" + s, true
+		case driver.OpGt:
+			return name + ":>" + s, true
+		case driver.OpLe:
+			return name + ":<=" + s, true
+		case driver.OpLt:
+			return name + ":<" + s, true
+		}
+		return "", false
+	}
+}
+
+// repoQualifier pushes "repository = owner/name" (or a bare name within the
+// owner) as repo:owner/name.
+func repoQualifier(owner string) qualifier {
+	return func(cond driver.Condition) (string, bool) {
+		if cond.Op != driver.OpEq {
+			return "", false
+		}
+		s, ok := text(cond.Value)
+		if !ok || s == "" {
+			return "", false
+		}
+		if !strings.Contains(s, "/") {
+			s = owner + "/" + s
+		}
+		return "repo:" + s, true
+	}
+}
+
+// Owner-wide collections.
+
+// withRepository appends the repository column read from repository_url.
+func withRepository(cols []column) []column {
+	out := slices.Clone(cols)
+	return append(out, column{name: "repository", native: "owner/name", typ: driver.TypeString, conv: repoFromURL("repository_url"), comment: "the repository, owner/name"})
+}
+
+var ownerIssueColumns = withRepository(issueColumns)
+
+var ownerCommitColumns = func() []column {
+	cols := slices.Clone(commitColumns)
+	return append(cols, column{name: "repository", native: "owner/name", typ: driver.TypeString, path: "repository.full_name", comment: "the repository, owner/name"})
+}()
+
+// issueSearchQualifiers are the conditions the issue search takes.
+var issueSearchQualifiers = map[string]qualifier{
+	"state": eqQualifier("state"), "labels": eqOrNoneQualifier("label"), "user": eqQualifier("author"),
+	"assignees": eqOrNoneQualifier("assignee"), "milestone": eqOrNoneQualifier("milestone"),
+	"created_at": rangeQualifier("created"), "updated_at": rangeQualifier("updated"), "closed_at": rangeQualifier("closed"),
+	"comments": rangeQualifier("comments"),
+}
+
+var issueSearchSorts = map[string]string{"created_at": "created", "updated_at": "updated", "comments": "comments"}
+
+// ownerCollections are the collections of an owner namespace, in display
+// order: the owner's repositories, and its issues, pull requests and
+// commits across every repository, through GitHub search.
+var ownerCollections = []*collection{
+	{
+		name: "repositories", listing: true, keyCol: "full_name", columns: repositoryColumns,
+		params:  []string{"type", "sort", "direction"},
+		sorts:   map[string]string{"created_at": "created", "updated_at": "updated", "pushed_at": "pushed", "full_name": "full_name"},
+		comment: "the owner's repositories",
+	},
+	{
+		name: "issues", keyCol: "number", keys: []string{"repository", "number"}, columns: ownerIssueColumns,
+		params:  []string{"q", "sort", "order"},
+		search:  &searchSpec{endpoint: "/search/issues", base: "is:issue", qualifiers: issueSearchQualifiers, sorts: issueSearchSorts, peer: "issues"},
+		comment: "issues across every repository of the owner (GitHub search; at most 1000)",
+	},
+	{
+		name: "pull_requests", keyCol: "number", keys: []string{"repository", "number"}, columns: ownerIssueColumns,
+		params:  []string{"q", "sort", "order"},
+		search:  &searchSpec{endpoint: "/search/issues", base: "is:pr", qualifiers: issueSearchQualifiers, sorts: issueSearchSorts, peer: "pull_requests"},
+		comment: "pull requests across every repository of the owner (GitHub search; the issue view: no head, base or merge data)",
+	},
+	{
+		name: "commits", keyCol: "sha", keys: []string{"repository", "sha"}, columns: ownerCommitColumns,
+		params: []string{"q", "sort", "order"},
+		search: &searchSpec{endpoint: searchCommits, base: "", qualifiers: map[string]qualifier{
+			"author": eqQualifier("author"), "committer": eqQualifier("committer"), "author_name": eqQualifier("author-name"),
+			"author_email": eqQualifier("author-email"), "author_date": rangeQualifier("author-date"), "committer_date": rangeQualifier("committer-date"),
+		}, sorts: map[string]string{"author_date": "author-date", "committer_date": "committer-date"}},
+		comment: "commits across every repository of the owner (GitHub search, which needs text: filter by message; at most 1000)",
+	},
+}
+
+// ownerCollectionByName finds an owner-wide collection.
+func ownerCollectionByName(name string) *collection {
+	for _, c := range ownerCollections {
+		if c.name == name {
+			return c
+		}
+	}
+	return nil
+}
+
+// ownerCollectionNames lists the owner-wide collections in display order.
+func ownerCollectionNames() []string {
+	out := make([]string, len(ownerCollections))
+	for i, c := range ownerCollections {
+		out[i] = c.name
+	}
+	return out
+}
+
+// knownCollection reports a name that is a collection in some scope.
+func knownCollection(name string) bool {
+	return collectionByName(name) != nil || ownerCollectionByName(name) != nil
 }

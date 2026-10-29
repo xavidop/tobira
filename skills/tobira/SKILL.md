@@ -83,11 +83,13 @@ driver and GitHub the one API driver: do not promise others.
     search and editing. Queries are JSON.
   - **Time series:** **InfluxDB 3** (`influxdb3://`, `influxdb://`): browse measurements and
     time-range reads, in SQL or InfluxQL.
-  - **API:** **GitHub** (`github://owner/repo`): a repository's issues, pull requests, comments,
-    commits, branches, tags, releases, labels, milestones and workflow runs as collections; browse,
-    explain (the requests, never sent), completion and editing (issues, pull requests, comments,
-    labels, milestones, releases). Queries are JSON (`list`, `get`, `search`, `repositories`,
-    `rest`, `graphql`, `rate_limit`); the token goes in `password:`.
+  - **API:** **GitHub** (`github://owner/repo`, `github://owner`): a repository's issues, pull
+    requests, comments, commits, branches, tags, releases, labels, milestones and workflow runs as
+    collections, and an owner's repositories, issues, pull requests and commits across all of
+    them (GitHub search); browse, explain (the requests, never sent), completion and editing
+    (issues, pull requests, comments, labels, milestones, releases). Queries are one JSON object
+    (`list`, `get`, `search`, `repositories`, `rest`, `graphql`, `rate_limit`), never SQL; the
+    token goes in `password:`.
   - **DuckDB** (`duckdb://`, `duckdb:`) is an external plugin, `tobira-driver-duckdb`, built with cgo and
     installed with `tobira driver install`.
   - Every driver but SingleStore declares the read-only guard (`readonly`). Each has its own

@@ -10,8 +10,8 @@ an escape hatch). It is built into the `tobira` binary and has no SDK dependency
 | Form | Meaning |
 | --- | --- |
 | `github://owner/repo` | one repository (the default namespace) |
-| `github://owner` | every repository of a user or organization |
-| `github://` | the token's own repositories, the ones it collaborates on and its organizations' |
+| `github://owner` | a user or organization: its repositories, and its issues, pull requests and commits across all of them |
+| `github://` | the token's own login and repositories, the ones it collaborates on and its organizations' |
 | `github://owner/repo?endpoint=https://ghe.example.com/api/v3` | a GitHub Enterprise Server |
 
 Put a token (a fine-grained or classic personal access token, or an app token) in the
@@ -34,7 +34,7 @@ tobira query "github://xavidop/tobira" '{"op":"search","type":"pull_requests","q
 
 | Capability | Support |
 | --- | --- |
-| Query, repositories, collections, describe | yes; repositories are the namespaces, the ten resource kinds the collections, with fixed columns |
+| Query, namespaces, collections, describe | yes; a repository has ten collections, an owner has repositories, issues, pull_requests and commits across its repositories (GitHub search) |
 | Browse | yes; page cursors, the filters GitHub offers run on the server and the rest in tobira, sorting where GitHub sorts |
 | Explain | yes; the HTTP requests a query would send and their rate-limit cost, never sent |
 | Completion | yes; ops, members, collections, parameters, repositories |
@@ -46,8 +46,8 @@ tobira query "github://xavidop/tobira" '{"op":"search","type":"pull_requests","q
 
 | op | What it reads | Members |
 | --- | --- | --- |
-| `list` (default) | a collection, with the endpoint's own parameters | `collection`, `repo`, `limit`, the parameters (`state`, `labels`, `sort`, `since`, `sha`, `branch`…) |
-| `get` | one item by key | `collection`, `repo`, the key (`number`, `id`, `sha` or `name`) |
+| `list` (default) | a collection, with the endpoint's own parameters | `collection`, `repo` (owner/name or an owner), `limit`, the parameters (`state`, `labels`, `sort`, `since`, `sha`, `branch`…; `q`, `sort`, `order` across an owner) |
+| `get` | one item by key | `collection`, `repo`, the key (`number`, `id`, `sha`, `name` or `full_name`); `repository` across an owner |
 | `search` | GitHub search | `type` (`issues`, `pull_requests`, `commits`, `repositories`), `q`, `sort`, `order`, `limit` |
 | `repositories` | the connection's repositories with their details | `limit` |
 | `rest` | any REST endpoint; arrays are paginated into rows | `method`, `path`, `params`, `body`, `limit` |

@@ -21,17 +21,18 @@ import (
 const integrationRepo = "xavidop/tobira"
 
 func openIntegration(t *testing.T) driver.Conn {
+	return openIntegrationDSN(t, "github://"+integrationRepo)
+}
+
+func openIntegrationDSN(t *testing.T, dsn string) driver.Conn {
 	t.Helper()
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
 		t.Skip("GITHUB_TOKEN is not set")
 	}
-	if ep := os.Getenv("TOBIRA_TEST_GITHUB_ENDPOINT"); ep != "" {
-		t.Logf("endpoint override %s is ignored: this suite is for api.github.com", ep)
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	c, err := New().Open(ctx, driver.ConnConfig{DSN: "github://" + integrationRepo, Password: driver.NewSecret(token), ReadOnly: true})
+	c, err := New().Open(ctx, driver.ConnConfig{DSN: dsn, Password: driver.NewSecret(token), ReadOnly: true})
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -124,5 +125,82 @@ func TestIntegrationReads(t *testing.T) {
 	}
 	if _, err := c.Query(ctx, driver.Query{Text: `{"op":"rest","method":"POST","path":"/repos/xavidop/tobira/issues","body":{"title":"x"}}`}); !errors.Is(err, driver.ErrReadOnly) {
 		t.Errorf("a write on a read-only connection: %v", err)
+	}
+}
+
+// The owner namespace of xavidop: its repositories, and issues, pull
+// requests and commits across them through GitHub search.
+func TestIntegrationOwner(t *testing.T) {
+	c := openIntegrationDSN(t, "github://xavidop")
+	ctx := context.Background()
+	nss, err := c.Namespaces(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(nss) < 2 || nss[0].Name != "xavidop" || !nss[0].Default || nss[0].Label != "owner" {
+		t.Fatalf("namespaces = %+v", nss[:min(len(nss), 3)])
+	}
+	colls, err := c.Collections(ctx, driver.NamespaceRef{Name: "xavidop"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(colls) != len(ownerCollections) {
+		t.Errorf("%d owner collections, want %d", len(colls), len(ownerCollections))
+	}
+	b := c.(driver.Browser)
+	for _, name := range []string{"repositories", "pull_requests"} {
+		rs, err := b.Browse(ctx, driver.CollectionRef{Namespace: "xavidop", Name: name}, driver.BrowseOptions{Limit: 3})
+		if err != nil {
+			t.Errorf("%s: %v", name, err)
+			continue
+		}
+		rows, _, err := driver.Collect(ctx, rs, 0)
+		if err != nil || len(rows) == 0 {
+			t.Errorf("%s: %d rows, %v", name, len(rows), err)
+		}
+	}
+	rs, err := b.Browse(ctx, driver.CollectionRef{Namespace: "xavidop", Name: "pull_requests"}, driver.BrowseOptions{
+		Limit:  3,
+		Filter: driver.Filter{Conditions: []driver.Condition{{Field: "repository", Op: driver.OpEq, Value: driver.String("tobira")}, {Field: "state", Op: driver.OpEq, Value: driver.String("closed")}}},
+		Sort:   []driver.SortKey{{Field: "updated_at", Desc: true}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, _, err := driver.Collect(ctx, rs, 0)
+	if err != nil || len(rows) != 3 {
+		t.Fatalf("filtered owner pull requests: %d rows, %v", len(rows), err)
+	}
+	rs, err = b.Browse(ctx, driver.CollectionRef{Namespace: "xavidop", Name: "commits"}, driver.BrowseOptions{
+		Limit:  3,
+		Filter: driver.Filter{Conditions: []driver.Condition{{Field: "message", Op: driver.OpContains, Value: driver.String("release")}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if commits, _, err := driver.Collect(ctx, rs, 0); err != nil || len(commits) == 0 {
+		t.Errorf("owner commits by message: %d rows, %v", len(commits), err)
+	}
+	repoIdx := indexOf(ownerIssueColumns, "repository")
+	for _, r := range rows {
+		if s, _ := r[repoIdx].AsText(); s != integrationRepo {
+			t.Errorf("repository = %q, want %s", s, integrationRepo)
+		}
+	}
+	for _, q := range []string{
+		`{"collection":"repositories","limit":3}`,
+		`{"collection":"issues","q":"label:bug","limit":3}`,
+		`{"collection":"commits","q":"release","limit":3}`,
+		`{"op":"get","collection":"pull_requests","repository":"tobira","number":46}`,
+		`{"op":"get","collection":"repositories","full_name":"tobira"}`,
+	} {
+		rs, err := c.Query(ctx, driver.Query{Text: q, ReadOnly: true})
+		if err != nil {
+			t.Errorf("%s: %v", q, err)
+			continue
+		}
+		if _, _, err := driver.Collect(ctx, rs, 0); err != nil {
+			t.Errorf("%s: %v", q, err)
+		}
 	}
 }

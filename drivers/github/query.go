@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"slices"
 	"sort"
 	"strconv"
@@ -41,7 +42,7 @@ const (
 // parameters for list.
 var opKeys = map[string][]string{
 	opList:         {"collection", "repo", "limit"},
-	opGet:          {"collection", "repo", "key", "number", "id", "sha", "name"},
+	opGet:          {"collection", "repo", "key", "number", "id", "sha", "name", "full_name", "repository"},
 	opSearch:       {"type", "q", "sort", "order", "limit"},
 	opRepositories: {"limit"},
 	opRest:         {"method", "path", "params", "body", "limit"},
@@ -58,10 +59,11 @@ var restMethods = []string{http.MethodGet, http.MethodPost, http.MethodPatch, ht
 // request is a parsed native query.
 type request struct {
 	op         string
-	repo       string // owner/repo, "" = the query's namespace or the DSN's
-	collection *collection
+	repo       string     // owner/repo or an owner, "" = the query's namespace or the DSN's
+	collection string     // a collection name; resolved in the scope when the query runs
 	params     url.Values // list: the endpoint's parameters
 	key        string     // get
+	repository string     // get in an owner scope: the item's repository
 	limit      int        // rows cap; 0 = default
 	// search
 	searchType string
@@ -90,6 +92,11 @@ func parseRequest(text string, readOnly bool) (request, error) {
 		}
 		return request{}, driver.Wrap(kind, Name, "query", errors.New(msg))
 	}
+	if t := strings.TrimSpace(text); t == "" || t[0] != '{' {
+		// Not JSON at all (SQL, say): nothing could run, so the hint is
+		// the same on a read-only connection.
+		return request{}, syntaxErr("query", `a github query is one JSON object, such as {"collection":"issues","state":"open"} (the ops are list, get, search, repositories, rest, graphql and rate_limit)`)
+	}
 	fields, err := topLevelObject(text)
 	if err != nil {
 		return refuse(driver.ErrSyntax, "%v", err)
@@ -113,14 +120,13 @@ func parseRequest(text string, readOnly bool) (request, error) {
 		}
 		return nil
 	}
-	var cname string
-	if err := errors.Join(str("repo", &r.repo), str("collection", &cname), str("type", &r.searchType), str("q", &r.q),
-		str("method", &r.method), str("path", &r.path), str("query", &r.document)); err != nil {
+	if err := errors.Join(str("repo", &r.repo), str("collection", &r.collection), str("type", &r.searchType), str("q", &r.q),
+		str("method", &r.method), str("path", &r.path), str("query", &r.document), str("repository", &r.repository)); err != nil {
 		return refuse(driver.ErrSyntax, "%v", err)
 	}
 	if r.repo != "" {
-		if _, _, ok := splitRepo(r.repo); !ok {
-			return refuse(driver.ErrSyntax, `"repo" must be owner/repo`)
+		if _, _, ok := splitRepo(r.repo); !ok && !validOwner(r.repo) {
+			return refuse(driver.ErrSyntax, `"repo" must be owner/repo, or an owner`)
 		}
 	}
 	if raw, ok := fields["limit"]; ok {
@@ -128,28 +134,26 @@ func parseRequest(text string, readOnly bool) (request, error) {
 			return refuse(driver.ErrSyntax, `"limit" must be a whole number, 0 or more`)
 		}
 	}
-	if _, ok := fields["collection"]; ok {
-		r.collection = collectionByName(cname)
-		if r.collection == nil {
-			return refuse(driver.ErrNotFound, "collection %q does not exist (the collections are %s)", cname, strings.Join(collectionNames(), ", "))
-		}
+	if _, ok := fields["collection"]; ok && !knownCollection(r.collection) {
+		return refuse(driver.ErrNotFound, "collection %q does not exist (the collections are %s; an owner has %s)", r.collection, strings.Join(collectionNames(), ", "), strings.Join(ownerCollectionNames(), ", "))
 	}
+	params := paramsOf(r.collection)
 	for k := range fields {
 		if slices.Contains(allowed, k) {
 			continue
 		}
-		if r.op == opList && r.collection != nil && slices.Contains(r.collection.params, k) {
+		if r.op == opList && slices.Contains(params, k) {
 			continue
 		}
 		return refuse(driver.ErrSyntax, "unknown member %q for op %s", k, r.op)
 	}
 	switch r.op {
 	case opList:
-		if r.collection == nil {
-			return refuse(driver.ErrSyntax, `name the "collection" to list (%s)`, strings.Join(collectionNames(), ", "))
+		if r.collection == "" {
+			return refuse(driver.ErrSyntax, `name the "collection" to list (%s; an owner has %s)`, strings.Join(collectionNames(), ", "), strings.Join(ownerCollectionNames(), ", "))
 		}
 		r.params = url.Values{}
-		for _, k := range r.collection.params {
+		for _, k := range params {
 			raw, ok := fields[k]
 			if !ok {
 				continue
@@ -161,17 +165,18 @@ func parseRequest(text string, readOnly bool) (request, error) {
 			r.params.Set(k, v)
 		}
 	case opGet:
-		if r.collection == nil {
+		if r.collection == "" {
 			return refuse(driver.ErrSyntax, `name the "collection" to read from`)
 		}
+		keyCols := keyColumnsOf(r.collection)
 		given := 0
-		for _, k := range []string{"key", "number", "id", "sha", "name"} {
+		for _, k := range []string{"key", "number", "id", "sha", "name", "full_name"} {
 			raw, ok := fields[k]
 			if !ok {
 				continue
 			}
-			if k != "key" && k != r.collection.keyCol {
-				return refuse(driver.ErrSyntax, "%s are keyed by %q, not %q", r.collection.name, r.collection.keyCol, k)
+			if k != "key" && !slices.Contains(keyCols, k) {
+				return refuse(driver.ErrSyntax, "%s are keyed by %q, not %q", r.collection, strings.Join(keyCols, " or "), k)
 			}
 			v, err := scalarText(raw)
 			if err != nil || v == "" {
@@ -181,7 +186,7 @@ func parseRequest(text string, readOnly bool) (request, error) {
 			given++
 		}
 		if given != 1 {
-			return refuse(driver.ErrSyntax, "give the %s's %q", strings.TrimSuffix(r.collection.name, "s"), r.collection.keyCol)
+			return refuse(driver.ErrSyntax, "give the %s's %q", strings.TrimSuffix(r.collection, "s"), strings.Join(keyCols, " or "))
 		}
 	case opSearch:
 		if !slices.Contains(searchTypes, r.searchType) {
@@ -251,6 +256,74 @@ func parseRequest(text string, readOnly bool) (request, error) {
 		}
 	}
 	return r, nil
+}
+
+// repoQualifierRe finds a repo: qualifier in search text.
+var repoQualifierRe = regexp.MustCompile(`(^|\s)repo:`)
+
+// searchQuery assembles the q of an owner-wide list: the caller's extra
+// text and qualifiers, the owner qualifier (dropped when the extra names a
+// repo:, since GitHub ORs user:, org: and repo: together) and the
+// collection's base. A commit search needs text.
+func searchQuery(op string, col *collection, owner, extra string) (string, error) {
+	extra = strings.TrimSpace(extra)
+	if repoQualifierRe.MatchString(extra) {
+		owner = ""
+	}
+	if col.search.endpoint == searchCommits && !hasSearchText(extra) {
+		return "", unsupportedErr(op, `GitHub's commit search needs text: give words or a "phrase" in q, besides qualifiers`)
+	}
+	return joinTerms(extra, owner, col.search.base), nil
+}
+
+// joinTerms joins search terms with one space, skipping empty ones.
+func joinTerms(parts ...string) string {
+	out := parts[:0:0]
+	for _, p := range parts {
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return strings.Join(out, " ")
+}
+
+// hasSearchText reports search text with at least one term that is not a
+// qualifier.
+func hasSearchText(q string) bool {
+	for _, term := range strings.Fields(q) {
+		if !strings.Contains(term, ":") || strings.HasPrefix(term, `"`) {
+			return true
+		}
+	}
+	return false
+}
+
+// paramsOf lists the list members a collection name takes in any scope.
+func paramsOf(name string) []string {
+	var out []string
+	if col := collectionByName(name); col != nil {
+		out = append(out, col.params...)
+	}
+	if col := ownerCollectionByName(name); col != nil {
+		for _, p := range col.params {
+			if !slices.Contains(out, p) {
+				out = append(out, p)
+			}
+		}
+	}
+	return out
+}
+
+// keyColumnsOf lists the key column a collection name has in any scope.
+func keyColumnsOf(name string) []string {
+	var out []string
+	if col := collectionByName(name); col != nil {
+		out = append(out, col.keyCol)
+	}
+	if col := ownerCollectionByName(name); col != nil && !slices.Contains(out, col.keyCol) {
+		out = append(out, col.keyCol)
+	}
+	return out
 }
 
 // scalarText renders a JSON string, number or boolean as a query parameter.
@@ -421,28 +494,69 @@ func (c *conn) collect(ctx context.Context, op string, req listRequest, limit in
 	return rows, false, "", nil
 }
 
-// runList lists a collection with the endpoint's own parameters.
+// scopedCollection resolves the query's scope and collection, checking
+// that the list members fit the collection in that scope.
+func (c *conn) scopedCollection(ctx context.Context, op string, r request, q driver.Query) (*collection, scope, error) {
+	s, err := c.resolveScope(ctx, op, firstNonEmpty(r.repo, q.Namespace))
+	if err != nil {
+		return nil, scope{}, err
+	}
+	col := collectionIn(s, r.collection)
+	if col == nil {
+		return nil, scope{}, notFoundErr(op, "collection %q does not exist in %s (the collections are %s)", r.collection, s.name(), strings.Join(scopeCollectionNames(s), ", "))
+	}
+	for k := range r.params {
+		if !slices.Contains(col.params, k) {
+			return nil, scope{}, syntaxErr(op, "%q is not a parameter of %s in %s (%s)", k, col.name, s.name(), strings.Join(col.params, ", "))
+		}
+	}
+	if err := c.checkScope(ctx, op, s); err != nil {
+		return nil, scope{}, err
+	}
+	return col, s, nil
+}
+
+// runList lists a collection with the endpoint's own parameters, or, for
+// an owner-wide collection, the search's extra qualifiers (q), sort and
+// order.
 func (c *conn) runList(ctx context.Context, op string, r request, q driver.Query) ([]driver.Column, []driver.Row, driver.Stats, error) {
-	owner, repo, err := c.resolveRepo(op, firstNonEmpty(r.repo, q.Namespace))
+	col, s, err := c.scopedCollection(ctx, op, r, q)
 	if err != nil {
 		return nil, nil, driver.Stats{}, err
 	}
-	if _, err := c.repos.get(ctx, op, owner, repo); err != nil {
-		return nil, nil, driver.Stats{}, err
-	}
 	limit, warning := rowCap(r, q)
-	query := url.Values{}
-	for k, v := range r.collection.defaults {
-		query[k] = v
+	req := listRequest{col: col, owner: s.owner, repo: s.repo, query: url.Values{}}
+	for k, v := range col.defaults {
+		req.query[k] = v
+	}
+	if col.listing {
+		path, query, err := c.ownerListing(ctx, op, s.owner)
+		if err != nil {
+			return nil, nil, driver.Stats{}, err
+		}
+		req.listPath = path
+		for k, v := range query {
+			req.query[k] = v
+		}
 	}
 	for k, v := range r.params {
-		query[k] = v
+		req.query[k] = v
 	}
-	perPage := min(limit, maxPerPage)
-	if r.collection.dropPullRequests {
-		perPage = maxPerPage // pull requests are dropped after the read: read full pages
+	if col.search != nil {
+		base, err := c.ownerQualifier(ctx, op, s.owner)
+		if err != nil {
+			return nil, nil, driver.Stats{}, err
+		}
+		q, err := searchQuery(op, col, base, r.params.Get("q"))
+		if err != nil {
+			return nil, nil, driver.Stats{}, err
+		}
+		req.query.Set("q", q)
 	}
-	req := listRequest{col: r.collection, owner: owner, repo: repo, query: query, perPage: perPage}
+	req.perPage = min(limit, maxPerPage)
+	if col.dropPullRequests {
+		req.perPage = maxPerPage // pull requests are dropped after the read: read full pages
+	}
 	rows, more, stopped, err := c.collect(ctx, op, req, limit)
 	if err != nil {
 		return nil, nil, driver.Stats{}, err
@@ -453,42 +567,101 @@ func (c *conn) runList(ctx context.Context, op string, r request, q driver.Query
 			stats.Warnings = append(stats.Warnings, w)
 		}
 	}
-	return r.collection.resultColumns(driver.CollectionRef{Namespace: owner + "/" + repo, Name: r.collection.name}), rows, stats, nil
+	return col.resultColumns(driver.CollectionRef{Namespace: s.name(), Name: col.name}), rows, stats, nil
 }
 
-// runGet reads one item by key. Tags have no single-item endpoint: the
-// listing is searched instead.
+// runGet reads one item by key. In an owner scope, repositories are read
+// by full name and the other collections through their repository
+// ("repository" and the key).
 func (c *conn) runGet(ctx context.Context, op string, r request, q driver.Query) ([]driver.Column, []driver.Row, error) {
-	owner, repo, err := c.resolveRepo(op, firstNonEmpty(r.repo, q.Namespace))
+	col, s, err := c.scopedCollection(ctx, op, r, q)
 	if err != nil {
 		return nil, nil, err
 	}
-	if _, err := c.repos.get(ctx, op, owner, repo); err != nil {
-		return nil, nil, err
-	}
-	ref := driver.CollectionRef{Namespace: owner + "/" + repo, Name: r.collection.name}
-	row, err := c.getItem(ctx, op, r.collection, owner, repo, r.key)
-	if err != nil {
-		return nil, nil, err
-	}
-	return r.collection.resultColumns(ref), []driver.Row{row}, nil
-}
-
-// getItem reads one item of a collection by key.
-func (c *conn) getItem(ctx context.Context, op string, col *collection, owner, repo, key string) (driver.Row, error) {
-	if col.get != nil {
-		raw, err := c.client.getJSON(ctx, col.get(owner, repo, key), nil)
+	ref := driver.CollectionRef{Namespace: s.name(), Name: col.name}
+	if !s.ownerWide() {
+		raw, err := c.getItem(ctx, op, col, s.owner, s.repo, r.key)
 		if err != nil {
-			return nil, c.fail(ctx, op, err)
+			return nil, nil, err
 		}
 		row, err := col.row(raw)
+		if err != nil {
+			return nil, nil, c.fail(ctx, op, err)
+		}
+		return col.resultColumns(ref), []driver.Row{row}, nil
+	}
+	if col.listing {
+		full := r.key
+		if !strings.Contains(full, "/") {
+			full = s.owner + "/" + full
+		}
+		owner, repo, ok := splitRepo(full)
+		if !ok {
+			return nil, nil, syntaxErr(op, "%q is not a repository name", r.key)
+		}
+		raw, err := c.client.getJSON(ctx, "/repos/"+url.PathEscape(owner)+"/"+url.PathEscape(repo), nil)
+		if err != nil {
+			return nil, nil, c.fail(ctx, op, err)
+		}
+		row, err := col.row(raw)
+		if err != nil {
+			return nil, nil, c.fail(ctx, op, err)
+		}
+		return col.resultColumns(ref), []driver.Row{row}, nil
+	}
+	peer, rs, err := c.ownerItemScope(op, col, s, r.repository)
+	if err != nil {
+		return nil, nil, err
+	}
+	raw, err := c.getItem(ctx, op, peer, rs.owner, rs.repo, r.key)
+	if err != nil {
+		return nil, nil, err
+	}
+	row, err := col.row(raw)
+	if err != nil {
+		return nil, nil, c.fail(ctx, op, err)
+	}
+	if i := indexOf(col.columns, "repository"); i >= 0 && row[i].IsNull() {
+		row[i] = driver.String(rs.name())
+	}
+	return col.resultColumns(ref), []driver.Row{row}, nil
+}
+
+// ownerItemScope resolves the repository of one item of an owner-wide
+// collection: the repository collection the item lives in (the search's
+// peer) and its scope. repository is owner/name or a name within the owner.
+func (c *conn) ownerItemScope(op string, col *collection, s scope, repository string) (*collection, scope, error) {
+	if col.search == nil || col.search.peer == "" {
+		return nil, scope{}, unsupportedErr(op, "%s of an owner are read by listing only", col.name)
+	}
+	if repository == "" {
+		return nil, scope{}, syntaxErr(op, `an owner's %s are keyed by "repository" and %q: name the repository`, col.name, col.keyCol)
+	}
+	if !strings.Contains(repository, "/") {
+		repository = s.owner + "/" + repository
+	}
+	owner, repo, ok := splitRepo(repository)
+	if !ok {
+		return nil, scope{}, syntaxErr(op, "%q is not a repository: give owner/name", repository)
+	}
+	if !strings.EqualFold(owner, s.owner) {
+		return nil, scope{}, syntaxErr(op, "%s belongs to %s, not to %s", repository, owner, s.owner)
+	}
+	return collectionByName(col.search.peer), scope{owner, repo}, nil
+}
+
+// getItem reads one item of a repository collection by key, raw. Tags
+// have no single-item endpoint: the listing is searched instead.
+func (c *conn) getItem(ctx context.Context, op string, col *collection, owner, repo, key string) (json.RawMessage, error) {
+	if col.get != nil {
+		raw, err := c.client.getJSON(ctx, col.get(owner, repo, key), nil)
 		if err != nil {
 			return nil, c.fail(ctx, op, err)
 		}
 		if col.dropPullRequests && isPullRequest(raw) {
 			return nil, notFoundErr(op, "%s is a pull request: read it from pull_requests", key)
 		}
-		return row, nil
+		return raw, nil
 	}
 	req := listRequest{col: col, owner: owner, repo: repo, query: url.Values{}, perPage: maxPerPage}
 	keyIdx := indexOf(col.columns, col.keyCol)
@@ -503,7 +676,7 @@ func (c *conn) getItem(ctx context.Context, op string, col *collection, owner, r
 				return nil, c.fail(ctx, op, err)
 			}
 			if s, ok := text(row[keyIdx]); ok && s == key {
-				return row, nil
+				return it, nil
 			}
 		}
 		if !next {
