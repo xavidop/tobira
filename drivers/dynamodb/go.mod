@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.33.10
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.10
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.72.1
-	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.46.1
+	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.46.2
 	github.com/aws/smithy-go v1.28.6
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/xavidop/tobira v0.0.0-00010101000000-000000000000
