@@ -514,7 +514,10 @@ jobs:
   # cannot cross-compile: each release platform builds natively with the
   # plugin's own goreleaser config (never tobira's release). The discovered
   # test matrix runs its suite on Linux; this proves every platform builds and
-  # runs the suite where the e2e test applies.
+  # runs the suite where the e2e test applies. The Intel macOS runner only
+  # builds: it is too slow for the end-to-end test (which builds tobira under
+  # -race) to finish within go test's 10-minute limit, and the suite already
+  # runs on Linux x86-64, Linux arm64 and Apple Silicon.
   plugin-duckdb:
     name: plugin duckdb ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -536,7 +539,7 @@ jobs:
           workdir: drivers/duckdb
           args: build --snapshot --clean --single-target
       - name: go test (race)
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && matrix.os != 'macos-15-intel'
         working-directory: drivers/duckdb
         run: go test -race -count=1 ./...
       - name: sha256 of the plugin binary
