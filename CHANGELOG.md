@@ -2,6 +2,13 @@
 
 All notable changes to tobira are listed here, newest first. Versions follow [Semantic Versioning](https://semver.org/). Each new release is added at the top, with notes generated from the commit messages.
 
+# [1.6.0](https://github.com/xavidop/tobira/compare/v1.5.0...v1.6.0) (2026-10-29)
+
+
+### Features
+
+* **github:** owner-wide collections ([#71](https://github.com/xavidop/tobira/issues/71)) ([9956a68](https://github.com/xavidop/tobira/commit/9956a689e3002bdd69765c7e9a3d1fc3cbaa2c12))
+
 # [1.5.0](https://github.com/xavidop/tobira/compare/v1.4.1...v1.5.0) (2026-10-28)
 
 
