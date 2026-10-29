@@ -215,7 +215,7 @@ to the result.
 
 ## Compatibility
 
-Built with DuckDB 1.5.6, linked into the plugin. Tested with that version on real database files,
+Built with DuckDB 2.0.0, linked into the plugin. Tested with that version on real database files,
 directly and through tobira.
 
 ## Troubleshooting

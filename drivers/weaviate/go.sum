@@ -145,8 +145,8 @@ github.com/tklauser/numcpus v0.12.0 h1:NR85qdvHA9pFse3x3weVZ0r0ST8R6l5RHbZrlRaqo
 github.com/tklauser/numcpus v0.12.0/go.mod h1:ABHeXzJnr/qqwguhClkZKT1/8VABcYrsyUiUGobwWJg=
 github.com/weaviate/weaviate v1.39.10 h1:SBoGKn+y4ZY9MIvEW821aZ1TB++JhQRd9Uw5orytqeo=
 github.com/weaviate/weaviate v1.39.10/go.mod h1:BzlRQYE/eRA/siDYqtLJqzBW/NOvasgUnsKFExMccRw=
-github.com/weaviate/weaviate-go-client/v5 v5.7.3 h1:AB7asp3Nv3QMh34EtJarpezQQ600p6TJVrdRhmisrMI=
-github.com/weaviate/weaviate-go-client/v5 v5.7.3/go.mod h1:Q6lG7oDiKZLcE0UPiPkJ2+V7bOejSOpgJV3kZari1MY=
+github.com/weaviate/weaviate-go-client/v5 v5.7.4 h1:I4x8sW0sUcL598iNjGScLX7MZYX/lE21cZquoeYV+x4=
+github.com/weaviate/weaviate-go-client/v5 v5.7.4/go.mod h1:H3eSia8pWCGeqQo+SvEUY+53McJLykdXhmVvhAW44f0=
 github.com/yusufpapurcu/wmi v1.2.4 h1:zFUKzehAFReQwLys1b/iSMl+JQGSCSjtVqQn9bBrPo0=
 github.com/yusufpapurcu/wmi v1.2.4/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=

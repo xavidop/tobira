@@ -40,36 +40,39 @@ func TestTxAbortedByError(t *testing.T) {
 	path := newFile(t, "create table t (a int primary key)")
 	c := open(t, path, false)
 	ctx := context.Background()
-	tx, err := c.(driver.Transactor).Begin(ctx, driver.TxOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := queryAll(t, tx, driver.Query{Text: "insert into t values (1)"}); err != nil {
-		t.Fatal(err)
-	}
-	// A statement that fails to bind leaves the transaction alone...
-	if _, err := queryAll(t, tx, driver.Query{Text: "select * from nope"}); !errors.Is(err, driver.ErrNotFound) {
-		t.Fatalf("missing table = %v, want ErrNotFound", err)
-	}
-	if v := one(t, tx, "select count(*) from t"); v.String() != "1" {
-		t.Fatalf("count after a bind error = %v, want 1", v)
-	}
-	// ...but one that fails running aborts it.
-	if _, err := queryAll(t, tx, driver.Query{Text: "insert into t values (1)"}); !errors.Is(err, driver.ErrConstraint) {
-		t.Fatalf("duplicate key = %v, want ErrConstraint", err)
-	}
-	_, err = queryAll(t, tx, driver.Query{Text: "select 1"})
-	if !errors.Is(err, driver.ErrConnection) || !strings.Contains(err.Error(), "roll back") {
-		t.Errorf("a statement after DuckDB aborted the Tx = %v, want ErrConnection asking for a rollback", err)
-	}
-	if err := tx.Commit(ctx); err == nil {
-		t.Error("Commit of an aborted Tx succeeded")
-	}
-	if err := tx.Rollback(ctx); err != nil {
-		t.Errorf("Rollback after a failed Commit: %v", err)
-	}
-	if v := one(t, c, "select count(*) from t"); v.String() != "0" {
-		t.Errorf("count = %v, want 0 after the aborted Tx", v)
+	// DuckDB aborts a transaction on any error, a statement that fails to
+	// bind included; only ROLLBACK is accepted afterwards.
+	for _, failing := range []struct {
+		text string
+		kind error
+		name string
+	}{
+		{"select * from nope", driver.ErrNotFound, "a missing table"},
+		{"insert into t values (1)", driver.ErrConstraint, "a duplicate key"},
+	} {
+		tx, err := c.(driver.Transactor).Begin(ctx, driver.TxOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := queryAll(t, tx, driver.Query{Text: "insert into t values (1)"}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := queryAll(t, tx, driver.Query{Text: failing.text}); !errors.Is(err, failing.kind) {
+			t.Fatalf("%s = %v, want %v", failing.name, err, failing.kind)
+		}
+		_, err = queryAll(t, tx, driver.Query{Text: "select 1"})
+		if !errors.Is(err, driver.ErrConnection) || !strings.Contains(err.Error(), "roll back") {
+			t.Errorf("a statement after %s aborted the Tx = %v, want ErrConnection asking for a rollback", failing.name, err)
+		}
+		if err := tx.Commit(ctx); err == nil {
+			t.Errorf("Commit of a Tx aborted by %s succeeded", failing.name)
+		}
+		if err := tx.Rollback(ctx); err != nil {
+			t.Errorf("Rollback after a failed Commit: %v", err)
+		}
+		if v := one(t, c, "select count(*) from t"); v.String() != "0" {
+			t.Errorf("count = %v, want 0 after the Tx aborted by %s", v, failing.name)
+		}
 	}
 }
 
@@ -117,7 +120,7 @@ func TestExplain(t *testing.T) {
 	x := rw.(driver.Explainer)
 	ctx := context.Background()
 	plan, err := x.Explain(ctx, driver.Query{Text: "select * from t"}, driver.ExplainOptions{})
-	if err != nil || !strings.Contains(plan.Text, "SCAN") {
+	if err != nil || !strings.Contains(strings.ToUpper(plan.Text), "SCAN") {
 		t.Fatalf("Explain = %+v, %v", plan, err)
 	}
 	if _, err := x.Explain(ctx, driver.Query{Text: "select * from t", ReadOnly: true}, driver.ExplainOptions{Analyze: true}); err != nil {

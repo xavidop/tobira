@@ -227,12 +227,12 @@ func TestLargeValuesAreCapped(t *testing.T) {
 func TestValuesFitTheProtocol(t *testing.T) {
 	c := open(t, newFile(t), false)
 	for _, q := range []string{
-		"select list_transform(range(10000), x -> repeat('z', 200)) as v",
+		"select list_transform(range(10000), lambda x: repeat('z', 200)) as v",
 		"select [repeat('a', 400000), repeat('b', 400000), repeat('c', 400000)] as v",
-		"select map_from_entries(list_transform(range(5000), x -> {'k': x::varchar, 'v': repeat('m', 300)})) as v",
+		"select map_from_entries(list_transform(range(5000), lambda x: {'k': x::varchar, 'v': repeat('m', 300)})) as v",
 		"select {'a': repeat('a', 500000), 'b': repeat('b', 500000), 'c': repeat('c', 500000)} as v",
 		"select [[repeat('n', 300000), repeat('n', 300000)], [repeat('n', 300000), repeat('n', 300000)]] as v",
-		"select list_transform(range(3000), x -> {'s': repeat('s', 400), 'l': [x, x]}) as v",
+		"select list_transform(range(3000), lambda x: {'s': repeat('s', 400), 'l': [x, x]}) as v",
 	} {
 		rs, err := c.Query(context.Background(), driver.Query{Text: q})
 		if err != nil {
@@ -250,7 +250,7 @@ func TestValuesFitTheProtocol(t *testing.T) {
 		}
 	}
 	// A value that fits is not cut.
-	rs, err := c.Query(context.Background(), driver.Query{Text: "select list_transform(range(100), x -> repeat('z', 100)) as v"})
+	rs, err := c.Query(context.Background(), driver.Query{Text: "select list_transform(range(100), lambda x: repeat('z', 100)) as v"})
 	if err != nil {
 		t.Fatal(err)
 	}

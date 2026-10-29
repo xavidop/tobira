@@ -61,7 +61,7 @@ func TestCheckReadOnlyAllows(t *testing.T) {
 		"select \"select\" from t",
 		"select * from t join u on t.a = u.a, v",
 		"select * from t join u using (a)",
-		"select list_transform([1, 2], x -> x + 1)",
+		"select list_transform([1, 2], lambda x: x + 1)",
 		"select struct_insert({'a': 1}, b := 2)",
 		"select starts_with('ab', 'a')",
 		"select * replace (a + 1 as a) from t",

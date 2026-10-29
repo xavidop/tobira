@@ -73,7 +73,7 @@ already holds a writable connection to the same file.
 
 ## Compatibility
 
-Built with DuckDB 1.5.6. Tested with that version on real database files, directly and through
+Built with DuckDB 2.0.0. Tested with that version on real database files, directly and through
 tobira.
 
 ## Documentation
