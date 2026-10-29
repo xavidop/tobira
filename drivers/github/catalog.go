@@ -118,7 +118,9 @@ func (k *repoCache) get(ctx context.Context, op, owner, repo string) (*repoInfo,
 	return info, nil
 }
 
-// viewer is the token's login, or "" without a token.
+// viewer is the token's login, or "" without a token and for a token that
+// is no user's (a GitHub App's installation token, such as the one Actions
+// gives a workflow, is refused /user with 403).
 func (k *repoCache) viewer(ctx context.Context, op string) (string, error) {
 	if k.c.client.token == "" {
 		return "", nil
@@ -131,7 +133,13 @@ func (k *repoCache) viewer(ctx context.Context, op string) (string, error) {
 	}
 	raw, err := k.c.client.getJSON(ctx, "/user", nil)
 	if err != nil {
-		return "", k.c.fail(ctx, op, err)
+		if err := k.c.fail(ctx, op, err); driver.KindOf(err) != driver.ErrPermission {
+			return "", err
+		}
+		k.mu.Lock()
+		k.login, k.who = "", true
+		k.mu.Unlock()
+		return "", nil
 	}
 	var body struct {
 		Login string `json:"login"`
