@@ -199,7 +199,7 @@ require (
 	github.com/mbleigh/raymond v0.0.0-20250414171441-6b3a58ab9e0a // indirect
 	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
 	github.com/microsoft/go-mssqldb v1.11.2 // indirect
-	github.com/milvus-io/milvus-proto/go-api/v2 v2.6.26 // indirect
+	github.com/milvus-io/milvus-proto/go-api/v2 v2.6.27 // indirect
 	github.com/milvus-io/milvus/client/v2 v2.6.5 // indirect
 	github.com/milvus-io/milvus/pkg/v2 v2.6.7-0.20251201120310-af64f2acba38 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
