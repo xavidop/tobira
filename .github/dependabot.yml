@@ -214,6 +214,13 @@ updates:
     schedule: { interval: weekly }
     labels: [dependencies, go, plugin]
 
+  # Plugin host test plugin (own go.mod; built by plugin/host and cmd/tobira
+  # tests, so it must track the grpc/protobuf versions of the modules above)
+  - package-ecosystem: gomod
+    directory: "/plugin/host/testdata/plugin"
+    schedule: { interval: weekly }
+    labels: [dependencies, go, plugin]
+
   # GitHub Actions
   - package-ecosystem: github-actions
     directory: "/"
