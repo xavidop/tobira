@@ -2,6 +2,13 @@
 
 All notable changes to tobira are listed here, newest first. Versions follow [Semantic Versioning](https://semver.org/). Each new release is added at the top, with notes generated from the commit messages.
 
+## [1.6.1](https://github.com/xavidop/tobira/compare/v1.6.0...v1.6.1) (2026-11-05)
+
+
+### Bug Fixes
+
+* **deps:** release the dependency updates since 1.6.0 ([#105](https://github.com/xavidop/tobira/issues/105)) ([fddb6b3](https://github.com/xavidop/tobira/commit/fddb6b3ab224bbad7ef320135ceba22b93023789)), closes [#102](https://github.com/xavidop/tobira/issues/102) [#104](https://github.com/xavidop/tobira/issues/104) [#87](https://github.com/xavidop/tobira/issues/87) [#93](https://github.com/xavidop/tobira/issues/93) [#103](https://github.com/xavidop/tobira/issues/103)
+
 # [1.6.0](https://github.com/xavidop/tobira/compare/v1.5.0...v1.6.0) (2026-10-29)
 
 
