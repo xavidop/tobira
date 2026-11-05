@@ -67,8 +67,14 @@ def main() -> int:
     ]
 
     # The reverse direction matters too: an entry left behind after a module is
-    # renamed or removed makes dependabot log an error on every run.
-    stale = sorted(covered - {as_dependabot_dir(m) for m in modules})
+    # renamed or removed makes dependabot log an error on every run. Entries for
+    # modules outside the required set (testdata fixtures built by tests) are
+    # allowed as long as the go.mod still exists.
+    stale = sorted(
+        d
+        for d in covered - {as_dependabot_dir(m) for m in modules}
+        if not (REPO_ROOT / d.lstrip("/") / "go.mod").is_file()
+    )
 
     for module, directory in missing:
         print(
