@@ -2,6 +2,13 @@
 
 All notable changes to tobira are listed here, newest first. Versions follow [Semantic Versioning](https://semver.org/). Each new release is added at the top, with notes generated from the commit messages.
 
+# [1.7.0](https://github.com/xavidop/tobira/compare/v1.6.1...v1.7.0) (2026-11-05)
+
+
+### Features
+
+* cross-source queries over several connections ([#106](https://github.com/xavidop/tobira/issues/106)) ([995f396](https://github.com/xavidop/tobira/commit/995f39696cbef267091d5c61b7fb4b64c1d170ca))
+
 ## [1.6.1](https://github.com/xavidop/tobira/compare/v1.6.0...v1.6.1) (2026-11-05)
 
 
