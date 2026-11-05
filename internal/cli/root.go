@@ -152,7 +152,7 @@ func NewRoot(info BuildInfo, streams Streams, deps Deps) *cobra.Command {
 	root.PersistentFlags().String("config", "", "config file (default $TOBIRA_CONFIG or $XDG_CONFIG_HOME/tobira/config.yaml)")
 	root.PersistentFlags().Bool("debug", false, "write JSON debug logs to $XDG_STATE_HOME/tobira/tobira.log")
 	root.Flags().Bool("read-only", false, "open every connection read-only in the TUI")
-	root.AddCommand(newVersionCmd(info), a.newQueryCmd(), a.newAskCmd(), a.newConnectCmd(), a.newConnectionsCmd(), a.newHistoryCmd(), a.newMCPCmd(), a.newAICmd(), a.newDriverCmd(), a.newDoctorCmd(), a.newWatchCmd())
+	root.AddCommand(newVersionCmd(info), a.newQueryCmd(), a.newFederateCmd(), a.newAskCmd(), a.newConnectCmd(), a.newConnectionsCmd(), a.newHistoryCmd(), a.newMCPCmd(), a.newAICmd(), a.newDriverCmd(), a.newDoctorCmd(), a.newWatchCmd())
 	return root
 }
 

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/xavidop/tobira/driver"
 	"github.com/xavidop/tobira/internal/assistant"
 	"github.com/xavidop/tobira/internal/config"
+	"github.com/xavidop/tobira/internal/federate"
 	"github.com/xavidop/tobira/internal/history"
 	"github.com/xavidop/tobira/internal/query"
 	"github.com/xavidop/tobira/internal/session"
@@ -50,7 +52,9 @@ func (a *app) newAskCmd() *cobra.Command {
 			"The question is the last argument, or \"-\" to read it from stdin. The connection\n" +
 			"(a configured name or a DSN) is the first argument or --conn; without either the\n" +
 			"only configured connection is used. The assistant's tools reach only that\n" +
-			"connection. Row data obeys ai.send_rows: with ask (the default) rows are withheld\n" +
+			"connection. Several configured names separated by commas (local-pg,crm) widen the\n" +
+			"conversation to all of them, so the assistant may propose and run cross-source\n" +
+			"queries over them. Row data obeys ai.send_rows: with ask (the default) rows are withheld\n" +
 			"from the model unless --send-rows is given, with always they are sent without it,\n" +
 			"and with never they are always withheld (--send-rows is refused). The assistant\n" +
 			"is configured by the ai: section of the config file.",
@@ -72,7 +76,7 @@ func (a *app) newAskCmd() *cobra.Command {
 		},
 	}
 	fl := cmd.Flags()
-	fl.StringVar(&f.conn, "conn", "", "connection name or DSN, the same as the first argument (default: the only configured connection)")
+	fl.StringVar(&f.conn, "conn", "", "connection name or DSN, the same as the first argument (default: the only configured connection); several names separated by commas allow cross-source queries")
 	fl.StringVar(&f.collection, "collection", "", `collection to focus on: ns.name, or name in the default namespace ("a.b"."c.d" quotes dots)`)
 	fl.BoolVar(&f.answer, "answer", false, "let the assistant run read-only queries and print its answer")
 	fl.BoolVar(&f.sendRows, "send-rows", false, "allow row data to be sent to the model for this run")
@@ -156,18 +160,20 @@ func (a *app) runAsk(cmd *cobra.Command, arg string, f askFlags) error {
 	// can write either (the CLI never offers execute).
 	mgr, _ := a.newManager(ctx, cfg, f.run, log)
 	defer func() { _ = mgr.CloseAll() }()
-	connName, err := a.askConnection(cfg, mgr, f.conn)
+	connName, extra, err := a.askConnections(cfg, mgr, f.conn)
 	if err != nil {
 		return err
 	}
 	// A plugin connection's real Info, before the assistant's tools read
 	// its capabilities.
-	unavailable, err := a.resolvePlugins(ctx, mgr, []string{connName}, log)
+	unavailable, err := a.resolvePlugins(ctx, mgr, append([]string{connName}, extra...), log)
 	if err != nil {
 		return err // cancelled: the usual exit for an interrupt
 	}
-	if why, ok := unavailable[connName]; ok {
-		return &exitError{code: exitConnection, err: errUnavailableConn(connName, why)}
+	for _, n := range append([]string{connName}, extra...) {
+		if why, ok := unavailable[n]; ok {
+			return &exitError{code: exitConnection, err: errUnavailableConn(n, why)}
+		}
 	}
 	hist := a.openHistory(ctx, log, cfg)
 	defer func() { _ = hist.Close() }()
@@ -178,7 +184,7 @@ func (a *app) runAsk(cmd *cobra.Command, arg string, f askFlags) error {
 	if asst == nil {
 		return a.notConfigured(cmd)
 	}
-	scope := assistant.Scope{Conn: connName}
+	scope := assistant.Scope{Conn: connName, Conns: extra}
 	if collName != "" {
 		if collNS == "" {
 			if collNS, err = defaultNamespace(ctx, mgr, connName); err != nil {
@@ -199,7 +205,7 @@ func (a *app) runAsk(cmd *cobra.Command, arg string, f askFlags) error {
 			return assistant.ConsentNo, nil
 		},
 	}
-	log.Info("ask start", "connection", connName, "answer", f.answer, "send_rows", f.sendRows)
+	log.Info("ask start", "connection", connName, "connections", extra, "answer", f.answer, "send_rows", f.sendRows)
 	out := askOutput{w: a.streams.Out, json: f.format == "json", dim: a.isTTY(a.streams.Out)}
 	if f.answer {
 		res, err := asst.Answer(ctx, assistant.AnswerRequest{Scope: scope, Question: question}, ev)
@@ -219,20 +225,39 @@ func (a *app) runAsk(cmd *cobra.Command, arg string, f askFlags) error {
 	if err := (askOutput{w: a.streams.Err, dim: a.isTTY(a.streams.Err)}).ask(res); err != nil {
 		return err
 	}
-	return a.runProposal(ctx, mgr, connName, res.Query, runFormat, f, hist, log)
+	return a.runProposal(ctx, mgr, cfg, scope, res.Query, runFormat, f, hist, log)
 }
 
 // runProposal runs the proposed query as `tobira query --read-only` would:
 // read-only whatever the connection allows, with --limit and --timeout,
 // recorded in the history as a CLI run, and printed in format. Its errors
-// map to the same exit codes.
-func (a *app) runProposal(ctx context.Context, mgr *session.Manager, connName, text string, format query.Format,
+// map to the same exit codes. A cross-source proposal runs as `tobira
+// federate` would, over the scope's connections only.
+func (a *app) runProposal(ctx context.Context, mgr *session.Manager, cfg *config.Config, scope assistant.Scope, text string, format query.Format,
 	f askFlags, hist *history.Store, log *slog.Logger) error {
 	if f.timeout > 0 {
 		// The timeout also bounds connecting, not just the query.
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, f.timeout)
 		defer cancel()
+	}
+	connName := scope.Conn
+	if federate.IsFederated(text) {
+		st, err := federate.Parse(text)
+		if err != nil {
+			return usageError(fmt.Errorf("the proposal is not a valid cross-source statement: %w", err))
+		}
+		if st.Sink != nil {
+			return usageError(fmt.Errorf("the proposal has a @sink (line %d), which --run does not write", st.Sink.Line))
+		}
+		log.Info("federate start", "sources", len(st.Sources), "connections", scope.Connections(), "format", string(format), "source", "ask --run")
+		res, err := a.runFederated(ctx, mgr, st, text, federate.Options{
+			MaxSourceRows: cfg.FederateMaxSourceRows(), Limit: f.limit, Registry: a.deps.Registry, Allowed: scope.Connections(),
+		}, hist, log)
+		if err != nil {
+			return err
+		}
+		return query.Write(a.streams.Out, format, res)
 	}
 	conn, err := mgr.Open(ctx, connName)
 	if err != nil {
@@ -289,6 +314,35 @@ func (a *app) notConfigured(cmd *cobra.Command) error {
 		where = query.EscapeControls(p)
 	}
 	return usageError(fmt.Errorf("%w: add an ai: section to %s (see %s)", assistant.ErrNotConfigured, where, aiDocsURL))
+}
+
+// askConnections settles the connections the assistant is scoped to: the
+// primary one and the others of a comma-separated list. A DSN is never
+// split (its own text may hold commas) and stands alone; a list holds
+// configured names. Repeats are dropped.
+func (a *app) askConnections(cfg *config.Config, mgr *session.Manager, arg string) (primary string, extra []string, err error) {
+	if arg == "" || isDSN(arg) || !strings.Contains(arg, ",") {
+		primary, err = a.askConnection(cfg, mgr, arg)
+		return primary, nil, err
+	}
+	var names []string
+	for _, p := range strings.Split(arg, ",") {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			return "", nil, usageError(errors.New("the connection list has an empty name"))
+		}
+		if isDSN(p) {
+			return "", nil, usageError(errors.New("a connection list holds configured names, not a DSN"))
+		}
+		n, err := a.askConnection(cfg, mgr, p)
+		if err != nil {
+			return "", nil, err
+		}
+		if !slices.Contains(names, n) {
+			names = append(names, n)
+		}
+	}
+	return names[0], names[1:], nil
 }
 
 // askConnection settles the connection name the assistant is scoped to:

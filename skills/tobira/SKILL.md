@@ -1,6 +1,6 @@
 ---
 name: tobira
-description: Use when working with tobira, the Go terminal client for many databases (SQL, document, key-value, columnar, time-series, search, wide-column, vector: SQLite, PostgreSQL and pgvector, MySQL, SQL Server, Oracle, Snowflake, BigQuery, ClickHouse, MongoDB, Firestore, Cosmos DB, Redis, DynamoDB, Cassandra, Elasticsearch, InfluxDB, Qdrant, Pinecone, Milvus, Neo4j, GitHub, DuckDB and more), when explaining its driver model, installing it, planning or writing a driver (a Go module or an external plugin), installing a driver plugin with `tobira driver`, using the TUI and its query editor, editing rows, exporting results, running `tobira query`, `tobira watch`, `tobira ask`, `tobira history`, `tobira mcp`, `tobira doctor` or `tobira connections` (including importing from DBeaver, TablePlus or ~/.pgpass and exporting), the AI assistant and its `ai:` config, the MCP server and its `mcp:` config and client setup, configuring connections and secrets, troubleshooting a setup, or answering what the tobira CLI can do. Covers github.com/xavidop/tobira.
+description: Use when working with tobira, the Go terminal client for many databases (SQL, document, key-value, columnar, time-series, search, wide-column, vector: SQLite, PostgreSQL and pgvector, MySQL, SQL Server, Oracle, Snowflake, BigQuery, ClickHouse, MongoDB, Firestore, Cosmos DB, Redis, DynamoDB, Cassandra, Elasticsearch, InfluxDB, Qdrant, Pinecone, Milvus, Neo4j, GitHub, DuckDB and more), when explaining its driver model, installing it, planning or writing a driver (a Go module or an external plugin), installing a driver plugin with `tobira driver`, using the TUI and its query editor, editing rows, exporting results, running `tobira query`, `tobira federate` (one query over several connections), `tobira watch`, `tobira ask`, `tobira history`, `tobira mcp`, `tobira doctor` or `tobira connections` (including importing from DBeaver, TablePlus or ~/.pgpass and exporting), the AI assistant and its `ai:` config, the MCP server and its `mcp:` config and client setup, configuring connections and secrets, troubleshooting a setup, or answering what the tobira CLI can do. Covers github.com/xavidop/tobira.
 ---
 
 # tobira: every database, one terminal
@@ -11,7 +11,7 @@ same way on all of them. Module: `github.com/xavidop/tobira`.
 Docs: https://xavidop.github.io/tobira/docs/
 
 What it has: `tobira` (the terminal UI), `tobira connect`, `tobira connections` (with `export`
-and `import`), `tobira query`, `tobira watch`, `tobira ask`, `tobira mcp`, `tobira history`,
+and `import`), `tobira query`, `tobira federate`, `tobira watch`, `tobira ask`, `tobira mcp`, `tobira history`,
 `tobira driver`, `tobira doctor` and `tobira version`, with thirty-two drivers (SQLite, PostgreSQL with
 pgvector, MySQL, MongoDB, Redis, ClickHouse, Qdrant, InfluxDB, CockroachDB, MariaDB, Redshift,
 Greenplum, SingleStore, SQL Server, Cassandra, Oracle, BigQuery, Amazon DynamoDB, libSQL / Turso,
@@ -133,6 +133,29 @@ or ndjson file (format from `--format`, else the extension), exports every row w
 format. One statement per query.
 
 ```sh
+tobira federate -f weekly.sql --format csv      # one query over several connections
+tobira federate -f weekly.sql --explain         # what would run where; contacts nothing
+```
+
+`tobira federate [query]` runs a cross-source query: `-- @source <alias> = <connection>[/<namespace>]:
+<native query>` comment lines (one per connection, each in that connection's own language, continued
+on following `--` lines), then one SQLite statement over the alias tables. Every source runs
+read-only whatever the connection allows and stages at most `federate.max_source_rows` rows (10000
+by default, `--max-source-rows`, up to 1,000,000; a cut source is named in the stats warnings); the
+final statement must be a read. Flags: `-f`, `--format`, `--limit`, `--timeout`, `--explain`,
+`--output`, `--max-source-rows`, and for a statement with a `-- @sink <connection>[/<namespace>]:
+<collection>` line, `--apply` (insert the result's rows into that collection, one transaction where
+the driver has them; the target must be writable, its driver must edit rows and the collection must
+exist) or `--dry-run` (print them, write nothing); a sink without either flag is refused. In the TUI a
+sink's rows become pending inserts of the open collection for `:apply`. Connections must be configured names (no DSN). Exit codes as
+`tobira query`: 4 for a source or final statement that writes, or a read-only sink. Put filters and aggregations in the
+source queries, the join in the final statement; there is no predicate pushdown and no consistent
+snapshot across sources. In the TUI, a buffer with `@source` lines runs as a whole into a tab labelled
+`federated`, highlighted as SQLite; `:explain` shows the plan. Each source is recorded in the history on
+its own connection and the whole statement under `federated`. Docs:
+https://xavidop.github.io/tobira/docs/cross-source/.
+
+```sh
 tobira watch local-pg orders                    # LISTEN on channel orders: one JSON line per NOTIFY
 tobira watch mongo shop.orders --max 10         # a change stream on a collection
 tobira watch cache 'session:*' --timeout 30s --format table   # Redis keyspace notifications
@@ -208,10 +231,13 @@ tobira ask "how many users signed up today?" --answer --format json           # 
 echo "tables without a primary key?" | tobira ask - --conn pg                 # question from stdin
 ```
 
-Flags: `--conn <name|dsn>` (default: the only configured connection), `--collection <ns.name|name>`
+Flags: `--conn <name|dsn>` (default: the only configured connection; several configured names
+separated by commas, `pg,crm`, widen the conversation to all of them for cross-source queries, and
+the first is the primary), `--collection <ns.name|name>`
 (`"a.b"."c.d"` quotes dots), `--answer`, `--send-rows`, `--format text|json`, and `--run`, which
 runs the proposed query read-only and prints its result like `tobira query` (with `--limit`,
-default 1000, `--timeout`, default 30s, and `--format table|json|ndjson|csv`). Exit 1 usage/config
+default 1000, `--timeout`, default 30s, and `--format table|json|ndjson|csv`; a cross-source
+proposal runs as `tobira federate` would). Exit 1 usage/config
 (also AI not configured), 2 provider auth/unreachable/rate limit, 3 model error and Ctrl-C. It never
 has the `execute` tool. Docs: https://xavidop.github.io/tobira/docs/ai/.
 
@@ -243,8 +269,11 @@ In the TUI, `a` opens the AI panel (right side from 120 columns, else full scree
 ask (propose a query) and answer (runs read-only queries), `enter` sends (on an empty input it does
 nothing), `ctrl+o` loads the latest proposal into the editor, `F5`/`ctrl+enter` loads and runs it,
 `ctrl+y` copies it; `ctrl+c` cancels, `esc` leaves. `f` on a failed run's error tab asks the AI to fix it. Commands: `:ask
-<question>`, `:ask! <question>`, `:explain-results` and `:ai execute on|off` (lets answers run
-writes on a non-read-only connection, each statement confirmed with `y`). Queries the assistant
+<question>`, `:ask! <question>`, `:explain-results`, `:ai execute on|off` (lets answers run
+writes on a non-read-only connection, each statement confirmed with `y`) and `:ai scope
+<name>[,<name>]|off` (adds connections to the conversation: one schema section per connection, the
+assistant may propose a cross-source statement, and answer mode gets the read-only `federate` tool,
+whose rows follow `send_rows` per connection). Queries the assistant
 runs are in `tobira history` with source `ai`. Prompts can be overridden with files in
 `$XDG_CONFIG_HOME/tobira/prompts/` (`ask`, `answer`, `explain_results`, `fix_error`
 `.prompt`). `tobira ai dev` is a hidden developer command for the Genkit Dev UI; use test
@@ -465,7 +494,9 @@ mcp:
 Flags (each replaces its config key): `--expose`, `--allow-writes`, `--max-rows`, `--send-rows`,
 `--http host:port`, `--insecure-bind`, `--allowed-host` (repeatable). Tools: `list_connections`,
 `list_namespaces`, `list_collections`, `describe`, `sample`, `query`, `explain`, `similar` when an
-exposed connection's driver searches vectors (same arguments as the assistant's), and `execute` only
+exposed connection's driver searches vectors (same arguments as the assistant's), `federate` when more
+than one connection is exposed (a read-only cross-source statement over exposed connections only,
+`statement` and `limit`), and `execute` only
 when `allow_writes` is not empty (refused by policy on any other connection and on read-only ones).
 Resources: `tobira://<connection>/<namespace>/<collection>/schema`. Exit codes: 1 usage or config
 (nothing exposed), 2 stream or listen failure, 4 a non-loopback `--http` without `--insecure-bind`.

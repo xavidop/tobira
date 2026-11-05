@@ -292,9 +292,49 @@ func TestToolListWithoutWrites(t *testing.T) {
 
 func TestToolListWithWrites(t *testing.T) {
 	c := newEnv(t).serve(t, config.MCP{Expose: []string{"lite", "lite2"}, AllowWrites: []string{"lite"}}, "unit")
-	want := sorted(append(slices.Clone(readTools), tools.NameExecute))
+	// Two exposed connections also offer federate.
+	want := sorted(append(slices.Clone(readTools), tools.NameExecute, tools.NameFederate))
 	if got := toolNames(t, c); !slices.Equal(got, want) {
 		t.Errorf("tools = %v, want %v", got, want)
+	}
+}
+
+// federate joins exposed connections read-only, refuses a connection outside
+// the exposed set like every tool, and records each source on its
+// connection plus the whole statement under federated.
+func TestFederateTool(t *testing.T) {
+	e := newEnv(t)
+	c := e.serve(t, config.MCP{Expose: []string{"lite", "lite2"}}, "unit")
+	stmt := "-- @source a = lite: select id, status from orders\n" +
+		"-- @source b = lite2: select id from orders where status = 'paid'\n" +
+		"select a.status from a join b on b.id = a.id"
+	var out struct {
+		Rows     [][]any  `json:"rows"`
+		Warnings []string `json:"warnings"`
+	}
+	okJSON(t, call(t, c, tools.NameFederate, map[string]any{"statement": stmt}), &out)
+	if len(out.Rows) != 1 || out.Rows[0][0] != "paid" {
+		t.Errorf("rows = %v, want [[paid]]", out.Rows)
+	}
+	if len(out.Warnings) != 2 || !strings.HasPrefix(out.Warnings[0], "source a (lite): 2 rows") {
+		t.Errorf("warnings = %v, want one line per source", out.Warnings)
+	}
+	res := call(t, c, tools.NameFederate, map[string]any{"statement": "-- @source h = hidden: select 1\nselect * from h"})
+	if !res.IsError || !strings.Contains(text(t, res), "unknown connection") {
+		t.Errorf("non-exposed source = %q (error %v), want unknown connection", text(t, res), res.IsError)
+	}
+	res = call(t, c, tools.NameFederate, map[string]any{"statement": "-- @source a = lite: select id from orders\ndelete from a"})
+	if !res.IsError || !strings.Contains(text(t, res), "must be a read") {
+		t.Errorf("final write = %q (error %v), want a read-only refusal", text(t, res), res.IsError)
+	}
+	var conns []string
+	for _, h := range historyMCP(t, e) {
+		conns = append(conns, h.Conn)
+	}
+	for _, want := range []string{"lite", "lite2", "federated"} {
+		if !slices.Contains(conns, want) {
+			t.Errorf("history connections %v lack %s", conns, want)
+		}
 	}
 }
 

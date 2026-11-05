@@ -42,6 +42,10 @@ until `:apply` writes them. Editing needs a driver that supports edits (see the
 On a read-only connection `e`, `i` and `d` are refused with a lock message. Result tabs and the row
 detail are read-only.
 
+A [cross-source query](/docs/cross-source/#writing-the-result-into-a-collection) with a `-- @sink`
+line adds its result as pending inserts of the open collection, one per row, for `:apply` to write
+like rows inserted with `i`.
+
 ### What `:apply` does
 
 - **With transactions** (see the drivers matrix), the changes run in one transaction. Any error

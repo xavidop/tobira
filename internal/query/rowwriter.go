@@ -187,6 +187,16 @@ func (j *jsonWriter) End(stats driver.Stats) error {
 	b = strconv.AppendInt(b, stats.Duration.Round(time.Millisecond).Milliseconds(), 10)
 	b = append(b, `,"truncated":`...)
 	b = strconv.AppendBool(b, stats.Truncated)
+	if len(stats.Warnings) > 0 {
+		b = append(b, `,"warnings":[`...)
+		for i, w := range stats.Warnings {
+			if i > 0 {
+				b = append(b, ',')
+			}
+			b = appendString(b, w)
+		}
+		b = append(b, ']')
+	}
 	b = append(b, '}')
 	j.compact = b
 	_, _ = j.w.WriteString("],\n  \"stats\": ")

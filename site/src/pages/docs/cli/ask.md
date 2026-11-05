@@ -27,15 +27,23 @@ is a usage error. With two arguments the first is the connection, a configured n
 (`tobira ask pg "orders per day"`). `--conn` does the same; giving both is a usage error. The
 assistant's tools reach only that connection.
 
+Several configured names separated by commas (`pg,crm`) widen the conversation to all of them: the
+schema context has one section per connection and the assistant may propose a
+[cross-source statement](/docs/cross-source/) over them. The first name is the primary connection,
+the one `--collection` belongs to. A DSN cannot be part of a list.
+
 ### Modes
 
 - **Propose (default).** The assistant proposes a query and explains it. Nothing runs.
 - **`--run`.** The proposed query then runs as `tobira query --read-only` would: on a connection
   opened read-only, with `--limit`, `--timeout` and `--format` as for `tobira query`, recorded in the
   history as source `cli`, with the same output and exit codes. A proposal that writes is refused
-  with exit 4. The proposal and its explanation go to stderr, so stdout carries only the result.
+  with exit 4. The proposal and its explanation go to stderr, so stdout carries only the result. A
+  cross-source proposal runs as [`tobira federate`](/docs/cli/federate/) would, over the listed
+  connections only.
 - **`--answer`.** The assistant runs read-only queries itself, up to `ai.max_tool_calls`, and
-  prints its answer followed by the queries it ran.
+  prints its answer followed by the queries it ran. With several connections it also has the
+  `federate` tool, which runs a cross-source statement read-only.
 
 The command line never offers the `execute` tool; only the terminal UI does, behind a confirmation.
 Queries the assistant runs are recorded in the history as source `ai`; the `ask` command itself is
@@ -45,7 +53,7 @@ not.
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--conn <name\|dsn>` | the only configured connection | A configured name or a DSN, resolved as `tobira query` does. With none or several configured and no `--conn`, exits 1 and lists the names. |
+| `--conn <name\|dsn>` | the only configured connection | A configured name or a DSN, resolved as `tobira query` does, or several configured names separated by commas for cross-source queries. With none or several configured and no `--conn`, exits 1 and lists the names. |
 | `--collection <ns.name\|name>` | | Focus on one collection. A bare name uses the connection's default namespace. A name that contains a dot goes in double quotes: `"a.b"."c.d"` (a doubled `""` is one quote). |
 | `--answer` | off | Run read-only queries and print the answer instead of proposing a query. Cannot be combined with `--run`. |
 | `--run` | off | Run the proposed query read-only and print its result. |

@@ -124,7 +124,11 @@ func validatePrompt(name, text string) (err error) {
 // sampleInput is an input with every field a prompt can use, for
 // validation.
 func sampleInput(name string) map[string]any {
-	in := map[string]any{"dialect": "sqlite", "kind": "sql", "schema": "dialect: sqlite", "nonce": "0123456789abcdef"}
+	in := map[string]any{
+		"dialect": "sqlite", "kind": "sql", "schema": "dialect: sqlite", "nonce": "0123456789abcdef",
+		"federated": true, "max_source_rows": 10000,
+		"connections": []map[string]any{{"name": "dev", "dialect": "sqlite", "kind": "sql"}, {"name": "gh", "dialect": "github", "kind": "other", "syntax": "a JSON object"}},
+	}
 	switch name {
 	case promptAsk, promptAnswer:
 		in["question"] = "how many rows?"

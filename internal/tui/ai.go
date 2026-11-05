@@ -81,6 +81,9 @@ type aiConv struct {
 	exec bool   // :ai execute on
 	// proposal is the most recent proposed query; "" for none.
 	proposal string
+	// conns are the other connections of the conversation (:ai scope), so
+	// the assistant may propose and run cross-source queries over them.
+	conns []string
 }
 
 func (c *aiConv) add(kind aiEntryKind, text string) {
@@ -91,9 +94,10 @@ func (c *aiConv) add(kind aiEntryKind, text string) {
 type aiTurn struct {
 	id   uint64
 	conn string
-	// conns is every connection the turn has touched: its scope's, and any
-	// a tool call, a row prompt or an execute confirmation named. The
-	// assistant binds tools to the scope, so it is conn alone in practice.
+	// conns is every connection the turn has touched: its scope's (the
+	// panel's connection and the ones :ai scope added), and any a tool
+	// call, a row prompt or an execute confirmation named. The assistant
+	// binds tools to the scope, so it is those in practice.
 	conns  map[string]bool
 	cancel context.CancelFunc
 	done   chan struct{} // closed when the assistant call has returned
@@ -341,13 +345,68 @@ func (a *Model) aiConn() string {
 	return conn
 }
 
-// aiScope is conn plus the open collection when it belongs to conn.
+// aiScope is conn plus the open collection when it belongs to conn, and
+// the other connections :ai scope added to the conversation.
 func (a *Model) aiScope(conn string) assistant.Scope {
 	s := assistant.Scope{Conn: conn}
 	if a.cur.set && a.cur.conn == conn {
 		s.Namespace, s.Collection = a.cur.ref.Namespace, a.cur.ref.Name
 	}
+	if c := a.ai.conv[conn]; c != nil {
+		s.Conns = slices.Clone(c.conns)
+	}
 	return s
+}
+
+// aiTabScope is the scope a run tab's statement is discussed in: the tab's
+// connection and its conversation, or, for a cross-source tab, the panel's
+// connection widened to the tab's sources. ok is false when the panel is on
+// another connection than the tab.
+func (a *Model) aiTabScope(t *resultTab) (conn string, s assistant.Scope, ok bool) {
+	conn = a.aiConn()
+	if conn == "" {
+		return "", assistant.Scope{}, false
+	}
+	if t.conn != federatedConn {
+		if t.conn != conn {
+			return conn, assistant.Scope{}, false
+		}
+		return conn, a.aiScope(conn), true
+	}
+	s = a.aiScope(conn)
+	for _, c := range t.srcConns {
+		if c != conn && !slices.Contains(s.Conns, c) {
+			s.Conns = append(s.Conns, c)
+		}
+	}
+	return conn, s, true
+}
+
+// aiScopeCmd is :ai scope: the other connections the panel's conversation
+// may query, for cross-source queries, or none with off.
+func (a *Model) aiScopeCmd(conns []string) tea.Cmd {
+	conn := a.aiConn()
+	if conn == "" {
+		return a.flash("select a connection in the sidebar first", false)
+	}
+	var extra []string
+	for _, n := range conns {
+		name := query.EscapeControls(n)
+		switch {
+		case n == conn, slices.Contains(extra, n):
+			continue
+		case !hasConn(a.mgr, n):
+			return a.flash(fmt.Sprintf("unknown connection %q", name), true)
+		case a.mgr.State(n).Broken:
+			return a.flash("connection "+name+" is misconfigured", true)
+		}
+		extra = append(extra, n)
+	}
+	a.aiConvFor(conn).conns = extra
+	if len(extra) == 0 {
+		return a.flash("AI scope: "+conn+" only", false)
+	}
+	return a.flash("AI scope: "+conn+" + "+strings.Join(extra, ", ")+"; the assistant may propose cross-source queries", false)
 }
 
 // aiConvFor returns conn's conversation, creating it; nil for no connection.
@@ -445,15 +504,18 @@ func (a *Model) fixWithAI(t *resultTab) tea.Cmd {
 	if why := a.aiUnavailable(); why != "" {
 		return a.flash(why, true)
 	}
-	if t.conn != a.aiConn() {
+	conn, scope, ok := a.aiTabScope(t)
+	if !ok {
+		if conn == "" {
+			return a.flash("select a connection in the sidebar first", false)
+		}
 		return a.flash("switch to "+t.conn+" to fix its run", false)
 	}
-	c := a.aiConvFor(t.conn)
+	c := a.aiConvFor(conn)
 	stmt, shown, cause := t.stmt, t.errText, t.err
 	question := "fix: " + stmt
 	c.add(entryUser, question)
-	scope := a.aiScope(t.conn)
-	return a.startTurn(t.conn, c, func(ctx context.Context, s assistant.Session, ev assistant.Events) (aiResult, error) {
+	return a.startTurn(conn, c, func(ctx context.Context, s assistant.Session, ev assistant.Events) (aiResult, error) {
 		r, err := s.FixError(ctx, assistant.FixErrorRequest{Scope: scope, Query: stmt, Error: shown, Err: cause}, ev)
 		return aiResult{question: question, markdown: r.Explanation, query: r.Query, usage: r.Usage}, err
 	})
@@ -469,14 +531,18 @@ func (a *Model) explainResults() tea.Cmd {
 	if why := a.aiUnavailable(); why != "" {
 		return a.flash(why, true)
 	}
-	if t.conn != a.aiConn() {
+	conn, scope, ok := a.aiTabScope(t)
+	if !ok {
+		if conn == "" {
+			return a.flash("select a connection in the sidebar first", false)
+		}
 		return a.flash("switch to "+t.conn+" to explain its results", false)
 	}
-	c := a.aiConvFor(t.conn)
-	req := assistant.ExplainResultsRequest{Scope: a.aiScope(t.conn), Query: t.stmt, Columns: t.cols, Rows: t.result, Truncated: t.truncated}
+	c := a.aiConvFor(conn)
+	req := assistant.ExplainResultsRequest{Scope: scope, Query: t.stmt, Columns: t.cols, Rows: t.result, Truncated: t.truncated}
 	question := "explain the results of: " + t.stmt
 	c.add(entryUser, question)
-	return a.startTurn(t.conn, c, func(ctx context.Context, s assistant.Session, ev assistant.Events) (aiResult, error) {
+	return a.startTurn(conn, c, func(ctx context.Context, s assistant.Session, ev assistant.Events) (aiResult, error) {
 		r, err := s.ExplainResults(ctx, req, ev)
 		return aiResult{question: question, markdown: r.Markdown, usage: r.Usage}, err
 	})
@@ -490,7 +556,11 @@ func (a *Model) startTurn(conn string, c *aiConv, fn func(context.Context, assis
 	id := a.ai.seq
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
-	a.ai.turn = &aiTurn{id: id, conn: conn, conns: map[string]bool{conn: true}, cancel: cancel, done: done}
+	touched := map[string]bool{conn: true}
+	for _, n := range c.conns { // the other connections of the conversation
+		touched[n] = true
+	}
+	a.ai.turn = &aiTurn{id: id, conn: conn, conns: touched, cancel: cancel, done: done}
 	a.ai.scroll = 0
 	sess := a.aiSession(c)
 	ch := make(chan aiEvent)
@@ -798,6 +868,9 @@ func (a *Model) aiHeaderParts() (front, tail string) {
 				where += "/" + s.Namespace
 			}
 			where += "/" + s.Collection
+		}
+		if len(s.Conns) > 0 {
+			where += " +" + strings.Join(s.Conns, ",")
 		}
 		parts = append(parts, where)
 	}

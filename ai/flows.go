@@ -12,9 +12,14 @@ import (
 	"github.com/xavidop/tobira/ai/schemactx"
 	"github.com/xavidop/tobira/ai/tools"
 	"github.com/xavidop/tobira/internal/assistant"
+	"github.com/xavidop/tobira/internal/federate"
 
 	gai "github.com/firebase/genkit/go/ai"
 )
+
+// dialectFederated is the Dialect of a proposal that is a cross-source
+// statement: @source directives, then SQLite SQL over the alias tables.
+const dialectFederated = "federated"
 
 // The flow names, as the Genkit Dev UI lists them.
 const (
@@ -74,9 +79,14 @@ type flows struct {
 // schemaInfo is the schema context of a scope, ready for a prompt.
 type schemaInfo struct {
 	dialect, kind, syntax, text string
+	// federated says the conversation spans several connections: the
+	// prompts then describe cross-source statements, and conns lists the
+	// connections with what a query is for each.
+	federated bool
+	conns     []schemactx.ConnectionInfo
 }
 
-// schema builds the scope's schema context, redacted for the connection
+// schema builds the scope's schema context, redacted for its connections
 // and against the provider key. A scope it cannot use (no connections, an
 // unknown connection, one that fails to open) is assistant.ErrScope.
 func (f *flows) schema(ctx context.Context, scope assistant.Scope) (schemaInfo, error) {
@@ -87,14 +97,57 @@ func (f *flows) schema(ctx context.Context, scope assistant.Scope) (schemaInfo, 
 	if budget <= 0 {
 		budget = defaultContextTokens
 	}
-	sc, err := schemactx.Build(ctx, f.a.deps.Manager, scope, budget)
+	sc, conns, err := schemactx.BuildAll(ctx, f.a.deps.Manager, scope, budget)
 	if err != nil {
 		if cerr := ctx.Err(); cerr != nil {
 			return schemaInfo{}, cerr
 		}
-		return schemaInfo{}, fmt.Errorf("%w: %s", assistant.ErrScope, f.a.scrub(scope.Conn, err.Error()))
+		return schemaInfo{}, fmt.Errorf("%w: %s", assistant.ErrScope, f.scrubAll(scope, err.Error()))
 	}
-	return schemaInfo{dialect: sc.Dialect, kind: sc.Kind, syntax: sc.Syntax, text: f.a.scrub(scope.Conn, sc.Text)}, nil
+	return schemaInfo{
+		dialect: sc.Dialect, kind: sc.Kind, syntax: sc.Syntax, text: f.scrubAll(scope, sc.Text),
+		federated: len(scope.Connections()) > 1, conns: conns,
+	}, nil
+}
+
+// scrubAll redacts s for every connection of scope and against the key.
+func (f *flows) scrubAll(scope assistant.Scope, s string) string {
+	for _, c := range scope.Connections() {
+		s = f.a.scrub(c, s)
+	}
+	return f.a.scrub(scope.Conn, s)
+}
+
+// vars are the prompt variables every flow shares: the schema context and,
+// for a conversation that spans several connections, the cross-source
+// facts (federated, connections, max_source_rows). federated is also set
+// for a single connection when the statement under discussion is already a
+// cross-source statement (fix_error).
+func (f *flows) vars(sc schemaInfo, federated bool) map[string]any {
+	vars := map[string]any{"dialect": sc.dialect, "kind": sc.kind, "syntax": sc.syntax, "schema": sc.text}
+	if !sc.federated && !federated {
+		return vars
+	}
+	conns := make([]map[string]any, 0, len(sc.conns))
+	for _, c := range sc.conns {
+		conns = append(conns, map[string]any{"name": c.Name, "dialect": c.Dialect, "kind": c.Kind, "syntax": c.Syntax})
+	}
+	maxRows := f.a.deps.MaxSourceRows
+	if maxRows <= 0 {
+		maxRows = federate.DefaultMaxSourceRows
+	}
+	vars["federated"], vars["connections"], vars["max_source_rows"] = true, conns, maxRows
+	return vars
+}
+
+// proposalDialect is the Dialect of a proposal: federated when the
+// conversation spans several connections and the model wrote a cross-source
+// statement, else the primary connection's.
+func proposalDialect(sc schemaInfo, query string) string {
+	if federate.IsFederated(query) {
+		return dialectFederated
+	}
+	return sc.dialect
 }
 
 // render renders a prompt into the conversation and the request settings
@@ -209,12 +262,12 @@ func (f *flows) askTurn(ctx context.Context, t *turn, in askInput) (proposalOutp
 		return proposalOutput{}, err
 	}
 	offered := schemaTools(t.ts, scope)
-	msgs, r, err := f.render(ctx, promptAsk, map[string]any{
-		"dialect": sc.dialect, "kind": sc.kind, "syntax": sc.syntax, "schema": sc.text, "connection": scope.Conn,
-		"question": f.a.scrub(scope.Conn, in.Question),
-		"history":  f.a.history(scope.Conn, turns(in.History)),
-		"tools":    len(offered) > 0,
-	}, offered)
+	vars := f.vars(sc, false)
+	vars["connection"] = scope.Conn
+	vars["question"] = f.a.scrub(scope.Conn, in.Question)
+	vars["history"] = f.a.history(scope.Conn, turns(in.History))
+	vars["tools"] = len(offered) > 0
+	msgs, r, err := f.render(ctx, promptAsk, vars, offered)
 	if err != nil {
 		return proposalOutput{}, err
 	}
@@ -222,7 +275,7 @@ func (f *flows) askTurn(ctx context.Context, t *turn, in askInput) (proposalOutp
 	if err != nil {
 		return proposalOutput{}, err
 	}
-	return proposalOutput{Query: p.Query, Explanation: p.Explanation, Dialect: sc.dialect, Usage: toFlowUsage(t.finish())}, nil
+	return proposalOutput{Query: p.Query, Explanation: p.Explanation, Dialect: proposalDialect(sc, p.Query), Usage: toFlowUsage(t.finish())}, nil
 }
 
 func (f *flows) fixError(ctx context.Context, in fixErrorInput) (proposalOutput, error) {
@@ -244,12 +297,12 @@ func (f *flows) fixErrorTurn(ctx context.Context, t *turn, in fixErrorInput) (pr
 		return proposalOutput{}, err
 	}
 	offered := schemaTools(t.ts, scope)
-	msgs, r, err := f.render(ctx, promptFixError, map[string]any{
-		"dialect": sc.dialect, "kind": sc.kind, "syntax": sc.syntax, "schema": sc.text,
-		"query": f.a.scrub(scope.Conn, in.Query),
-		"error": f.a.scrub(scope.Conn, errText),
-		"tools": len(offered) > 0,
-	}, offered)
+	// A failed cross-source statement is fixed as one, whatever the scope.
+	vars := f.vars(sc, federate.IsFederated(in.Query))
+	vars["query"] = f.scrubAll(scope, in.Query)
+	vars["error"] = f.scrubAll(scope, errText)
+	vars["tools"] = len(offered) > 0
+	msgs, r, err := f.render(ctx, promptFixError, vars, offered)
 	if err != nil {
 		return proposalOutput{}, err
 	}
@@ -257,7 +310,7 @@ func (f *flows) fixErrorTurn(ctx context.Context, t *turn, in fixErrorInput) (pr
 	if err != nil {
 		return proposalOutput{}, err
 	}
-	return proposalOutput{Query: p.Query, Explanation: p.Explanation, Dialect: sc.dialect, Usage: toFlowUsage(t.finish())}, nil
+	return proposalOutput{Query: p.Query, Explanation: p.Explanation, Dialect: proposalDialect(sc, p.Query), Usage: toFlowUsage(t.finish())}, nil
 }
 
 func (f *flows) answer(ctx context.Context, in answerInput) (answerOutput, error) {
@@ -277,16 +330,20 @@ func (f *flows) answerTurn(ctx context.Context, t *turn, in answerInput) (answer
 	if t.ts.VectorSearchable(ctx) {
 		offered = append(offered, t.ts.SimilarTool().(gai.Tool))
 	}
+	// federate only where it has something to join: several connections.
+	if t.ts.Federatable(ctx) {
+		offered = append(offered, t.ts.FederateTool().(gai.Tool))
+	}
 	if in.AllowExecute {
 		offered = append(offered, t.ts.Execute().(gai.Tool))
 		ctx = tools.WithExecute(ctx)
 	}
-	msgs, r, err := f.render(ctx, promptAnswer, map[string]any{
-		"dialect": sc.dialect, "kind": sc.kind, "syntax": sc.syntax, "schema": sc.text, "connection": scope.Conn,
-		"question": f.a.scrub(scope.Conn, in.Question),
-		"history":  f.a.history(scope.Conn, turns(in.History)),
-		"execute":  in.AllowExecute,
-	}, offered)
+	vars := f.vars(sc, false)
+	vars["connection"] = scope.Conn
+	vars["question"] = f.a.scrub(scope.Conn, in.Question)
+	vars["history"] = f.a.history(scope.Conn, turns(in.History))
+	vars["execute"] = in.AllowExecute
+	msgs, r, err := f.render(ctx, promptAnswer, vars, offered)
 	if err != nil {
 		return answerOutput{}, err
 	}

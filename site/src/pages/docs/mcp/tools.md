@@ -20,10 +20,26 @@ them, and explains how `send_rows`, writes and the call history work.
 | `query` | Run one read-only statement. A statement that writes is refused. |
 | `explain` | The query plan of a statement. |
 | `similar` | The rows of a collection nearest to a vector or a text. Offered only when an exposed connection's driver can search vectors. |
+| `federate` | One read-only query over several exposed connections: a [cross-source statement](/docs/cross-source/). Offered only when more than one connection is exposed. |
 | `execute` | Run a write. Offered only when `allow_writes` is not empty. |
 
-`query`, `sample`, `explain` and `similar` always run with the read-only guard, a timeout and the
-row cap. Results keep large integers exact.
+`query`, `sample`, `explain`, `similar` and `federate` always run with the read-only guard, a
+timeout and the row cap. Results keep large integers exact.
+
+### federate
+
+`federate` takes a `statement`: one `-- @source <alias> = <connection>[/<namespace>]: <native query>`
+line per source, then one SQLite statement over the alias tables, as on the
+[cross-source queries](/docs/cross-source/) page, and an optional `limit` for the final result.
+
+- Every source connection must be exposed; any other name is answered as unknown, like everywhere
+  else. Every source runs read-only, whatever the connection allows, and stages at most
+  [`federate.max_source_rows`](/docs/configuration/#the-federate-section) rows; the result's
+  `warnings` say how many rows each source staged and whether it was cut.
+- The final statement must be a read. A `@sink` is refused.
+- Under `send_rows: never` the rows are withheld as for `query`.
+- Each staged query is recorded in the history on its own connection, and the whole statement under
+  the connection name `federated`.
 
 ### similar
 

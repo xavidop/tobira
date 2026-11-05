@@ -11,7 +11,8 @@ go run . -tobira ./tobira -config ./config.yaml -connection lite -namespace main
 
 Flags: `-tobira` (the binary, default `tobira` from `PATH`), `-config`, `-connection` and
 `-collection` (required) and `-namespace`. The connection must exist in the tobira config; it is
-the only one the server exposes, and `execute` is not offered because nothing is allow-listed.
+the only one the server exposes, so `execute` is not offered (nothing is allow-listed) and neither
+is `federate`, which the server offers only when more than one connection is exposed.
 
 `go test ./...` builds `cmd/tobira` into a temp dir and runs the example against a temp SQLite
 database. The guide to the server is on the

@@ -116,7 +116,7 @@ func historyPathValue(v *yaml.Node) (string, error) {
 }
 
 // topLevelKeys are the sections a config file may have.
-var topLevelKeys = []string{"connections", "tui", "ai", "mcp", "plugins", "history"}
+var topLevelKeys = []string{"connections", "tui", "ai", "mcp", "plugins", "history", "federate"}
 
 // topLevelWarnings warns about each top-level key tobira does not know,
 // which would otherwise be ignored without a word. The key is not quoted.

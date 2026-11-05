@@ -71,6 +71,10 @@ type (
 	ExplainResultsCmd struct{}
 	// AIExecuteCmd is :ai execute on|off.
 	AIExecuteCmd struct{ On bool }
+	// AIScopeCmd is :ai scope <name>[,<name>] (Conns) or :ai scope off
+	// (Conns empty): the other connections of the AI conversation, for
+	// cross-source queries.
+	AIScopeCmd struct{ Conns []string }
 	// ChartCmd is :chart <field> [window] (Window 0: chosen from the range
 	// and the pane width) or :chart off.
 	ChartCmd struct {
@@ -138,6 +142,7 @@ func Commands() []Command {
 		{":ask! <question>", "ask the AI for an answer; it may run read-only queries"},
 		{":explain-results", "ask the AI to explain the result tab"},
 		{":ai execute on|off", "let AI answers run writes, each one confirmed (off by default)"},
+		{":ai scope <name>[,<name>]|off", "add connections to the AI conversation, for cross-source queries"},
 		{":help", "this help"},
 		{":q", "quit (also :quit)"},
 	}
@@ -151,6 +156,9 @@ const (
 	chartUsage  = "chart <field> [window] | chart off"
 	rangeUsage  = "range <span like 6h or 7d> | range <start>..<end>"
 )
+
+// aiScopeUsage is the usage of :ai scope, the other form of :ai.
+const aiScopeUsage = "ai scope <name>[,<name>] | ai scope off"
 
 // MaxLimit is the highest row limit :set limit accepts. There is no
 // unlimited mode in the TUI, which keeps the memory a result holds bounded.
@@ -263,6 +271,9 @@ func Parse(line string) (tea.Msg, error) {
 		}
 		return UnwatchCmd{}, nil
 	case "ai":
+		if len(args) >= 1 && args[0] == "scope" {
+			return parseAIScope(args[1:])
+		}
 		if len(args) != 2 || args[0] != "execute" || (args[1] != "on" && args[1] != "off") {
 			return nil, usage(aiUsage)
 		}
@@ -370,6 +381,27 @@ func ParseSpan(s string) (time.Duration, error) {
 		return 0, errors.New("not a positive span")
 	}
 	return d, nil
+}
+
+// parseAIScope reads the argument of :ai scope: "off", or connection names
+// separated by commas (spaces around them are allowed).
+func parseAIScope(args []string) (tea.Msg, error) {
+	if len(args) == 0 {
+		return nil, usage(aiScopeUsage)
+	}
+	if len(args) == 1 && args[0] == "off" {
+		return AIScopeCmd{}, nil
+	}
+	var conns []string
+	for _, n := range strings.Split(strings.Join(args, ""), ",") {
+		if n = strings.TrimSpace(n); n != "" {
+			conns = append(conns, n)
+		}
+	}
+	if len(conns) == 0 {
+		return nil, usage(aiScopeUsage)
+	}
+	return AIScopeCmd{Conns: conns}, nil
 }
 
 func parseSet(args []string) (tea.Msg, error) {

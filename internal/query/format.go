@@ -446,6 +446,9 @@ func writeTable(w io.Writer, r *Result) error {
 		sb.WriteString(" · truncated")
 	}
 	sb.WriteByte('\n')
+	for _, warn := range r.Stats.Warnings {
+		sb.WriteString(escape(warn, false) + "\n")
+	}
 	_, err := io.WriteString(w, sb.String())
 	return err
 }

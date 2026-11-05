@@ -37,6 +37,11 @@ Browsing, completion lookups, inline edits written by `:apply` and `:export` are
 log is of the queries you ran, not of every statement tobira sent. An ad-hoc DSN is recorded under
 its redacted form.
 
+A [cross-source query](/docs/cross-source/) (`tobira federate`, or an editor buffer with `@source`
+directives) is recorded once per source, on that source's connection and with that source's query,
+and once as a whole under the connection name `federated`, so `--conn federated` lists the
+cross-source runs.
+
 ## Credentials are masked
 
 The query text is stored after the same redaction errors go through: DSN passwords, the connection's

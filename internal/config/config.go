@@ -33,6 +33,9 @@ type Config struct {
 	// History is the history: section; nil when the file has none, which
 	// means the default location (see HistoryPath).
 	History *History
+	// Federate is the federate: section; nil when the file has none, which
+	// means the defaults (see FederateMaxSourceRows).
+	Federate *Federate
 	// Warnings are notes about the file that do not stop it loading. They
 	// never contain a secret.
 	Warnings []string
@@ -114,6 +117,7 @@ func parse(path string, data []byte) (*Config, error) {
 		MCP         yaml.Node   `yaml:"mcp"`
 		Plugins     yaml.Node   `yaml:"plugins"`
 		History     yaml.Node   `yaml:"history"`
+		Federate    yaml.Node   `yaml:"federate"`
 	}
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return nil, fmt.Errorf("config %s: %w", path, err)
@@ -153,6 +157,13 @@ func parse(path string, data []byte) (*Config, error) {
 			return nil, fmt.Errorf("config %s: line %d: %w", path, line, err)
 		}
 		cfg.History = h
+	}
+	if doc.Federate.Kind != 0 && doc.Federate.Tag != "!!null" {
+		f, line, err := loadFederate(&doc.Federate)
+		if err != nil {
+			return nil, fmt.Errorf("config %s: line %d: %w", path, line, err)
+		}
+		cfg.Federate = f
 	}
 	cfg.Warnings = append(cfg.Warnings, topLevelWarnings(data)...)
 	seen := map[string]bool{}

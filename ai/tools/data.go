@@ -59,6 +59,9 @@ type RowsOutput struct {
 	// RowsAffected is set when the statement returned no columns and the
 	// driver reports the rows it affected (execute).
 	RowsAffected *int64 `json:"rows_affected,omitempty"`
+	// Warnings are notes on how the rows were produced: for federate, how
+	// many rows each source staged and whether it was cut.
+	Warnings []string `json:"warnings,omitempty"`
 
 	count int // rows the call returned, sent or not
 }

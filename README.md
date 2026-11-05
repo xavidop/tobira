@@ -90,6 +90,9 @@ tobira query local-pg "select now()"
   filters, a row detail tree, mouse support, themes and a vim keymap.
 - **Query editor.** Highlighting for each dialect, completion, history, result tabs, `:explain` and
   cancellation.
+- **Cross-source queries.** Join rows from two or more connections, whatever their kind, in one
+  statement: each `@source` runs its own native query read-only and SQLite joins them locally, from
+  the editor or with `tobira federate`.
 - **Inline editing.** Edit, insert and delete rows, review the pending changes, then `:apply` them,
   in one transaction where the database has them.
 - **Views for each kind of database.** Document previews, key-value types and TTLs, time-series
@@ -218,7 +221,8 @@ mcp:
 
 - **Tools.** `list_connections`, `list_namespaces`, `list_collections`, `describe`, `sample`,
   `query` and `explain`, all read-only; `similar` when an exposed connection supports vector
-  search; and `execute` only when `allow_writes` is not empty.
+  search; `federate` (one read-only query over several exposed connections) when more than one
+  is exposed; and `execute` only when `allow_writes` is not empty.
 - **Rows.** `send_rows` defaults to `always` here, because nobody is there to answer a prompt. Do
   not expose a connection whose data must not reach the model.
 - **HTTP.** `--http 127.0.0.1:8765` serves over HTTP with a bearer token, on loopback only unless
@@ -235,6 +239,7 @@ tobira                               open the terminal UI (on a terminal)
 tobira connect <connection|dsn>      open the terminal UI on one connection
 tobira connections list|add|edit|rm|test|set-password|export|import   manage, export and import connections
 tobira query <connection|dsn> [q]    run a query and print the result (--output writes a file)
+tobira federate [q]                  run one query over several connections (--explain, --output)
 tobira watch <connection|dsn> <target>   stream change events as JSON lines (--max, --timeout)
 tobira ask [connection] <question>   ask the AI assistant (--run runs the proposal read-only, --answer answers)
 tobira mcp --expose <names>          serve connections to an MCP client (--http for HTTP)

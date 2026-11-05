@@ -23,8 +23,8 @@ data, so treat that choice like any third-party service.
 - **`never` is not a hard boundary.** A withheld result still reveals its row count, truncation,
   timing and success, about one bit per call, so a model allowed many queries can learn a value
   indirectly. Keep secrets away from connections an untrusted model can query.
-- **Writes.** The `query`, `sample`, `explain` and `similar` tools always run read-only, with a
-  timeout and a row cap. `execute` exists only in the terminal UI, after `:ai execute on` on a
+- **Writes.** The `query`, `sample`, `explain`, `similar` and `federate` tools always run
+  read-only, with a timeout and a row cap. `execute` exists only in the terminal UI, after `:ai execute on` on a
   connection that is not read-only, and asks for every statement. `tobira ask` never has it.
 - **Keys.** `ai.api_key` is a secret reference, never a literal, and provider errors are redacted
   against it.

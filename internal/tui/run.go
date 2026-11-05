@@ -13,6 +13,7 @@ import (
 
 	"github.com/xavidop/tobira/driver"
 	"github.com/xavidop/tobira/driverutil/sqlcomplete"
+	"github.com/xavidop/tobira/internal/federate"
 	"github.com/xavidop/tobira/internal/history"
 	"github.com/xavidop/tobira/internal/tui/async"
 )
@@ -55,6 +56,9 @@ type runOutcome struct {
 	// reached is set once the statement was handed to the driver; an error
 	// before that (opening, waiting) cannot have aborted a transaction.
 	reached bool
+	// sources are the staged queries of a cross-source run, recorded in
+	// the history on their own connections (federate.go).
+	sources []federate.SourceRun
 }
 
 // runDoneMsg is the result of an editor run. Its ID is checked against the
@@ -108,8 +112,12 @@ func (a *Model) editorStatement() (stmt, refusal string) {
 	return text[s.Start:s.End], ""
 }
 
-// runStatement runs the selection or the statement under the cursor.
+// runStatement runs the selection or the statement under the cursor. A
+// buffer with @source directives is one cross-source statement, run whole.
 func (a *Model) runStatement() tea.Cmd {
+	if federate.IsFederated(a.ed.Value()) {
+		return a.startFederated(false)
+	}
 	stmt, refusal := a.editorStatement()
 	if refusal != "" {
 		return a.flash(refusal, false)
@@ -120,6 +128,9 @@ func (a *Model) runStatement() tea.Cmd {
 // runBuffer runs the whole buffer, which must hold one statement.
 func (a *Model) runBuffer() tea.Cmd {
 	text := a.ed.Value()
+	if federate.IsFederated(text) {
+		return a.startFederated(false)
+	}
 	spans := splitStatements(a.ed.Dialect(), text)
 	switch n := len(spans); {
 	case n == 0:
@@ -132,6 +143,9 @@ func (a *Model) runBuffer() tea.Cmd {
 
 // explain explains the selection or the statement under the cursor.
 func (a *Model) explain() tea.Cmd {
+	if federate.IsFederated(a.ed.Value()) {
+		return a.startFederated(true)
+	}
 	stmt, refusal := a.editorStatement()
 	if refusal != "" {
 		return a.flash(strings.Replace(refusal, "nothing to run", "nothing to explain", 1), false)
@@ -278,10 +292,29 @@ func (a *Model) runDone(r runDoneMsg) tea.Cmd {
 		t.cols, t.result, t.stats = v.cols, v.rows, v.stats // for :export
 		entry.OK, entry.Rows = true, int64(len(v.rows))
 	}
+	if t.sink != nil && r.Err == nil && !t.explain {
+		// The rows of a cross-source run with a @sink become pending inserts.
+		flash = a.sinkPending(t, v.cols, v.rows)
+	}
 	if t.noHistory {
 		return tea.Batch(flash, inv)
 	}
-	return tea.Batch(flash, inv, a.recordCmd(entry))
+	// A cross-source run is recorded as a whole, masked with every connection
+	// it names, and each staged query once more on its own connection.
+	for _, c := range t.srcConns {
+		entry.Query = a.mgr.Redact(c, entry.Query)
+	}
+	cmds := []tea.Cmd{flash, inv, a.recordCmd(entry)}
+	for _, s := range v.sources {
+		if s.Err != nil && s.Took == 0 {
+			continue // never started: cancelled because another source failed
+		}
+		cmds = append(cmds, a.recordCmd(history.Entry{
+			At: t.started, Conn: s.Conn, Source: history.SourceTUI, Query: s.Query,
+			OK: s.Err == nil, Rows: int64(s.Rows), Took: s.Took,
+		}))
+	}
+	return tea.Batch(cmds...)
 }
 
 // cancelRun cancels the run in flight, if any, marks its tab and returns the
@@ -355,6 +388,10 @@ const sizeLimitHint = "the result hit a size limit: narrow the query (add a LIMI
 // connection (and escaped when drawn).
 func (a *Model) runErrText(t *resultTab, err error) string {
 	switch {
+	case t.conn == federatedConn:
+		// The engine names the source and masks its message with that
+		// connection's settings; a read-only refusal there says which.
+		return a.mgr.Redact(t.conn, err.Error())
 	case errors.Is(err, errNoExplain):
 		return "explain is not supported by " + a.mgr.State(t.conn).Info.Name
 	case errors.Is(err, errNoExplainTx):

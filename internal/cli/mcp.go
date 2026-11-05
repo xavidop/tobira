@@ -44,6 +44,9 @@ type MCPOptions struct {
 	// others have answered, so the Manager's State carries their real
 	// capabilities and kind.
 	Unavailable map[string]string
+	// MaxSourceRows is federate.max_source_rows, for the federate tool; 0
+	// means the engine's default.
+	MaxSourceRows int
 }
 
 // MCPHTTP configures the Streamable HTTP transport.
@@ -176,6 +179,7 @@ func (a *app) runMCP(cmd *cobra.Command, _ []string) error {
 		Manager: mgr, History: hist, Policy: pol, Version: a.info.Version,
 		Stdin: a.streams.In, Stdout: a.streams.Out, Logger: log,
 		HTTP: httpOpts, Stderr: a.streams.Err, Unavailable: unavailable,
+		MaxSourceRows: cfg.FederateMaxSourceRows(),
 	})
 	if ctx.Err() != nil {
 		return nil // a signal: a clean shutdown

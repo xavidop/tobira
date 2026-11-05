@@ -87,6 +87,9 @@ type Options struct {
 	// the screen is restored, such as quitting past a stuck apply. Nil
 	// drops it.
 	Stderr io.Writer
+	// MaxSourceRows caps the rows staged from each source of a cross-source
+	// query (federate.max_source_rows); 0 means the engine's default.
+	MaxSourceRows int
 }
 
 // tickMsg is the redraw tick that runs only while a connection is opening.
@@ -167,6 +170,9 @@ type Model struct {
 	// runBuf is each connection's buffer as it was at its last run, to tell
 	// an unsaved query on quit.
 	runBuf map[string]string
+	// maxSourceRows caps what each source of a cross-source query stages
+	// (federate.go); 0 means the engine's default.
+	maxSourceRows int
 
 	// Completion and history navigation (complete.go, histnav.go).
 	cp     completion
@@ -250,7 +256,7 @@ func New(opts Options) (tea.Model, error) {
 	if log == nil {
 		log = slog.New(slog.DiscardHandler)
 	}
-	return &Model{
+	m := &Model{
 		mgr: opts.Manager, log: log, resolveDriver: opts.ResolveDriver,
 		themeName: name, th: th, km: km, darkBG: true,
 		sb:       sidebar.New(opts.Manager, th, km),
@@ -273,7 +279,9 @@ func New(opts Options) (tea.Model, error) {
 		aiErr:    opts.AIError,
 		embedErr: opts.EmbedderError,
 		chart:    newChartState(),
-	}, nil
+	}
+	m.maxSourceRows = opts.MaxSourceRows
+	return m, nil
 }
 
 func hasConn(m *session.Manager, name string) bool {
@@ -512,6 +520,8 @@ func (a *Model) update(msg tea.Msg) tea.Cmd {
 		return a.explainResults()
 	case palette.AIExecuteCmd:
 		return a.aiExecute(msg.On)
+	case palette.AIScopeCmd:
+		return a.aiScopeCmd(msg.Conns)
 	case aiEventMsg:
 		return a.aiEvent(msg)
 	case palette.ConnAddCmd:
