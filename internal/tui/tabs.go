@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/xavidop/tobira/driver"
+	"github.com/xavidop/tobira/internal/federate"
 	"github.com/xavidop/tobira/internal/query"
 	"github.com/xavidop/tobira/internal/tui/grid"
 	"github.com/xavidop/tobira/internal/tui/keymap"
@@ -69,6 +70,13 @@ type resultTab struct {
 
 	// A live tail tab's watch (watch.go); nil on every other tab.
 	watch *watchState
+
+	// A cross-source run's connections (federate.go): the history entry of
+	// the whole statement is masked with each of them.
+	srcConns []string
+	// sink is the collection a cross-source run's rows become pending
+	// inserts of once the run is done; nil for none.
+	sink *federate.Sink
 }
 
 // tabLabel is the first labelLen characters of stmt, whitespace collapsed,

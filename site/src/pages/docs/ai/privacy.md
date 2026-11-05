@@ -24,10 +24,13 @@ Each request carries:
 - **tool results**, when the assistant calls a tool: schema lookups, query plans and, subject to
   `send_rows`, rows.
 
-The tools reach only the connection of the conversation: the one in the panel's header, or the one
-`tobira ask` was given. `list_connections` shows only that connection, and a tool call that names
-any other is refused with the same `unknown connection` error as a name that is not configured. No
-other connection's schema or rows can reach the model, whatever `send_rows` says.
+The tools reach only the connections of the conversation: the one in the panel's header, or the one
+`tobira ask` was given, plus the ones added with `:ai scope` or a comma-separated `tobira ask` list
+for [cross-source queries](/docs/cross-source/). `list_connections` shows only those, and a tool
+call that names any other is refused with the same `unknown connection` error as a name that is not
+configured. No other connection's schema or rows can reach the model, whatever `send_rows` says.
+With several connections the schema context has one section per connection, and the `federate`
+tool's rows follow `send_rows` for every connection they come from.
 
 Every string passes through the connection's credential redactor before it leaves. String values
 are cut at 256 characters, and secrets in the text (DSN passwords, the resolved password, the API
@@ -77,8 +80,8 @@ that way. If you do not trust the model, keep secrets away from connections it c
 
 ## Read-only layers
 
-The assistant runs `query`, `sample`, `explain` and `similar` only on connections whose driver has
-the read-only guard (see [Drivers](/docs/drivers/)). Every such call is sent with the read-only
+The assistant runs `query`, `sample`, `explain`, `similar` and `federate` only on connections whose
+driver has the read-only guard (see [Drivers](/docs/drivers/)). Every such call is sent with the read-only
 flag, a 30 second timeout and a row cap of at most 200, whatever the model asks for. On a driver
 without the guard, only the schema tools are offered. The `execute` tool is refused on any
 connection that is read-only, by config, by `--read-only` or by `:readonly on`.

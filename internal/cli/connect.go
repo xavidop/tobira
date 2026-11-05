@@ -105,6 +105,7 @@ func (a *app) launchTUI(cmd *cobra.Command, focus string, readOnly bool) error {
 		// EmbedderError is shown with the "text similarity needs
 		// ai.embedder" refusal.
 		EmbedderError: embedErr,
+		MaxSourceRows: cfg.FederateMaxSourceRows(),
 	}
 	if hist != nil {
 		opts.History = hist // never a typed nil in the interface

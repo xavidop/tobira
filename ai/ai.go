@@ -69,6 +69,10 @@ type Deps struct {
 	// PromptDir holds prompt overrides: a <name>.prompt file there
 	// replaces the built-in prompt of that name. "" means none.
 	PromptDir string
+	// MaxSourceRows caps the rows the federate tool stages from each source
+	// of a cross-source statement (federate.max_source_rows); not positive
+	// means the engine's default.
+	MaxSourceRows int
 }
 
 // genkitAssistant implements assistant.Assistant on Genkit.
@@ -244,10 +248,11 @@ func (a *genkitAssistant) Model() string { return a.model }
 // connections, with the provider key masked in everything they return.
 func (a *genkitAssistant) newToolset() *tools.Toolset {
 	d := tools.ToolDeps{
-		Manager: a.deps.Manager,
-		Policy:  tools.RowPolicy(a.cfg.SendRows),
-		MaxRows: a.cfg.MaxRows,
-		Redact:  func(s string) string { return redact(s, a.key) },
+		Manager:       a.deps.Manager,
+		Policy:        tools.RowPolicy(a.cfg.SendRows),
+		MaxRows:       a.cfg.MaxRows,
+		Redact:        func(s string) string { return redact(s, a.key) },
+		MaxSourceRows: a.deps.MaxSourceRows,
 	}
 	if a.deps.History != nil {
 		d.History = a.deps.History // never a typed nil in the interface

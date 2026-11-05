@@ -19,14 +19,17 @@ type flowScope struct {
 	Conn       string `json:"conn"`
 	Namespace  string `json:"namespace,omitempty"`
 	Collection string `json:"collection,omitempty"`
+	// Conns are the other connections of the conversation (cross-source
+	// queries); Conn is the primary one.
+	Conns []string `json:"conns,omitempty"`
 }
 
 func (s flowScope) scope() assistant.Scope {
-	return assistant.Scope{Conn: s.Conn, Namespace: s.Namespace, Collection: s.Collection}
+	return assistant.Scope{Conn: s.Conn, Namespace: s.Namespace, Collection: s.Collection, Conns: s.Conns}
 }
 
 func toFlowScope(s assistant.Scope) flowScope {
-	return flowScope{Conn: s.Conn, Namespace: s.Namespace, Collection: s.Collection}
+	return flowScope{Conn: s.Conn, Namespace: s.Namespace, Collection: s.Collection, Conns: s.Conns}
 }
 
 // flowTurn is assistant.Turn.

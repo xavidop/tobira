@@ -86,6 +86,9 @@ type Options struct {
 	// tools refuse them and list_connections reports them unavailable (see
 	// tools.ToolDeps.Unavailable).
 	Unavailable map[string]string
+	// MaxSourceRows caps the rows the federate tool stages from each source
+	// (federate.max_source_rows); not positive means the engine's default.
+	MaxSourceRows int
 }
 
 // errNothingExposed is the refusal to serve no connection at all.
@@ -148,12 +151,13 @@ func newServer(ctx context.Context, o Options) (*srv, error) {
 	s := &srv{o: o, log: o.Logger, now: time.Now, grace: shutdownGrace, drain: shutdownDrain}
 	s.o.Policy.AllowWrites = slices.DeleteFunc(slices.Clone(o.Policy.AllowWrites), func(n string) bool { return !slices.Contains(o.Policy.Expose, n) })
 	deps := tools.ToolDeps{
-		Manager:     o.Manager,
-		Policy:      tools.RowsAlways,
-		MaxRows:     o.Policy.MaxRows,
-		RowCap:      config.MCPMaxRowsCap,
-		Connections: slices.Clone(o.Policy.Expose),
-		Unavailable: o.Unavailable,
+		Manager:       o.Manager,
+		Policy:        tools.RowsAlways,
+		MaxRows:       o.Policy.MaxRows,
+		RowCap:        config.MCPMaxRowsCap,
+		Connections:   slices.Clone(o.Policy.Expose),
+		Unavailable:   o.Unavailable,
+		MaxSourceRows: o.MaxSourceRows,
 	}
 	if o.Policy.SendRows == "never" {
 		deps.Policy = tools.RowsNever
@@ -170,6 +174,10 @@ func newServer(ctx context.Context, o Options) (*srv, error) {
 	offered := s.ts.Read()
 	if s.ts.VectorSearchable(ctx) {
 		offered = append(offered, s.ts.SimilarTool())
+	}
+	// federate joins exposed connections, so it needs more than one.
+	if len(o.Policy.Expose) > 1 {
+		offered = append(offered, s.ts.FederateTool())
 	}
 	if len(s.o.Policy.AllowWrites) > 0 {
 		offered = append(offered, s.ts.Execute())

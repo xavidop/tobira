@@ -31,6 +31,7 @@ scope, and the mode.
 | `:ask! <question>` | Open the panel and ask for an answer |
 | `:explain-results` | Explain the active result tab |
 | `:ai execute on\|off` | Let answers run writes on this connection, each confirmed (refused on a read-only connection) |
+| `:ai scope <name>[,<name>]\|off` | Add other connections to this conversation, for [cross-source queries](/docs/cross-source/); `off` returns to the panel's connection alone |
 
 - **A proposal is only text.** Nothing runs until you load it into the editor and run it, and the
   editor still enforces read-only.
@@ -54,12 +55,24 @@ shows `execute`, and every statement asks
   refused with `a transaction is open on <connection>; commit or roll back first`. Commit or roll
   back, then ask again.
 
+### Several connections at once
+
+`:ai scope crm,gh` adds the connections `crm` and `gh` to the panel's conversation; the header
+shows them as `+crm,gh`. The schema context then has one section per connection, the assistant is
+told what a query is for each, and it may answer with a [cross-source statement](/docs/cross-source/):
+`-- @source` lines that stage rows from each connection, then one SQLite statement that joins them.
+Loading such a proposal into the editor and running it opens a `federated` tab, as any cross-source
+buffer does. In answer mode the assistant gets the `federate` tool, which runs a cross-source
+statement read-only over the conversation's connections only; its rows follow `send_rows`, asking
+once per connection they come from. `:ai scope off` returns to the panel's connection alone.
+
 ## tobira ask
 
 ```sh
 tobira ask pg "orders per day last week" --collection public.orders
 tobira ask pg "how many users signed up today?" --answer --format json
 tobira ask pg "the ten newest orders" --run --format table
+tobira ask pg,crm "spend per customer name this week" --run    # a cross-source proposal, run read-only
 echo "which tables have no primary key?" | tobira ask pg -
 ```
 
@@ -69,7 +82,10 @@ echo "which tables have no primary key?" | tobira ask pg -
 - `--answer` lets the assistant run read-only queries and print its answer.
 
 It is never given the `execute` tool. The connection is the first argument (or `--conn`); without
-one it uses the only configured connection. Rows are withheld unless you pass `--send-rows`. The
+one it uses the only configured connection. Several configured names separated by commas
+(`pg,crm`) widen the conversation to all of them, as `:ai scope` does in the panel: the assistant
+may propose a cross-source statement, `--run` runs it as [`tobira federate`](/docs/cli/federate/)
+would, and `--answer` gets the `federate` tool. Rows are withheld unless you pass `--send-rows`. The
 queries an answer runs are recorded in the [history](/docs/history/) with source `ai`. Every flag,
 the output formats and the exit codes are in the [`tobira ask` reference](/docs/cli/ask/).
 

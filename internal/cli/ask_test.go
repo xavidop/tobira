@@ -61,7 +61,7 @@ func TestAskTextPrintsQueryExplanationFooter(t *testing.T) {
 		t.Fatalf("calls = %+v", calls)
 	}
 	req := calls[0].Req.(assistant.AskRequest)
-	if req.Question != "how many orders?" || req.Scope != (assistant.Scope{Conn: "main"}) {
+	if req.Question != "how many orders?" || req.Scope.Conn != "main" || len(req.Scope.Conns) != 0 {
 		t.Errorf("request = %+v", req)
 	}
 }
@@ -238,7 +238,7 @@ func TestAskCollectionScope(t *testing.T) {
 			if _, errOut, code := h.exec(t, context.Background(), "ask", "q", "--collection", c.arg); code != 0 {
 				t.Fatalf("code=%d stderr=%q", code, errOut)
 			}
-			if got := f.Calls()[0].Req.(assistant.AskRequest).Scope; got != c.want {
+			if got := f.Calls()[0].Req.(assistant.AskRequest).Scope; fmt.Sprint(got) != fmt.Sprint(c.want) {
 				t.Errorf("scope = %+v, want %+v", got, c.want)
 			}
 		})

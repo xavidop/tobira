@@ -25,6 +25,7 @@ tobira --help                                            # every command
 | Command | What it does |
 |---|---|
 | [`tobira query`](/docs/cli/query/) | Run one query and print the result, or write it to a file |
+| [`tobira federate`](/docs/cli/federate/) | Run one query over several connections and print the joined result |
 | [`tobira connect`](/docs/cli/connect/) | Open the terminal UI with one connection expanded |
 | [`tobira connections`](/docs/cli/connections/) | List, add, edit, remove, test, import and export connections, and store passwords in the OS keyring |
 | [`tobira ask`](/docs/cli/ask/) | Ask the AI assistant a question about a database |

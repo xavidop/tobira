@@ -58,7 +58,35 @@ func (e *TurnError) Unwrap() error { return e.Err }
 
 // Scope is what the user is looking at: a connection and, optionally, a
 // namespace and a collection in it.
-type Scope struct{ Conn, Namespace, Collection string }
+type Scope struct {
+	Conn, Namespace, Collection string
+	// Conns are the other connections of a multi-connection conversation,
+	// which lets the assistant propose and run cross-source queries over
+	// them; Conn stays the primary one. Empty for an ordinary conversation.
+	Conns []string
+}
+
+// Connections lists the scope's connections: Conn first, then Conns,
+// without repeats or empty names.
+func (s Scope) Connections() []string {
+	out := make([]string, 0, 1+len(s.Conns))
+	for _, n := range append([]string{s.Conn}, s.Conns...) {
+		if n == "" {
+			continue
+		}
+		dup := false
+		for _, seen := range out {
+			if seen == n {
+				dup = true
+				break
+			}
+		}
+		if !dup {
+			out = append(out, n)
+		}
+	}
+	return out
+}
 
 // Usage describes one model turn.
 type Usage struct {

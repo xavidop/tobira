@@ -83,7 +83,9 @@ func (a *genkitAssistant) newTurn(ctx context.Context, g *genkit.Genkit, scope f
 	t := &turn{a: a, g: g, ev: v.ev, ts: v.ts, start: time.Now()}
 	toolEvents := v.ev
 	toolEvents.ToolCall = t.recordCall
-	ctx = tools.WithConnections(ctx, scope.Conn)
+	// Every connection of the scope: the primary one, and the others a
+	// multi-connection conversation names for cross-source queries.
+	ctx = tools.WithConnections(ctx, scope.scope().Connections()...)
 	return tools.WithEvents(ctx, toolEvents), t
 }
 

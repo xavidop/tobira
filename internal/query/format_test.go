@@ -180,6 +180,26 @@ func TestTableFooters(t *testing.T) {
 	}
 }
 
+// Warnings follow the footer, one per line with control characters escaped,
+// and go into the JSON stats; a result without any has no warnings key.
+func TestWarningsInFooterAndStats(t *testing.T) {
+	r := &query.Result{
+		Columns: []driver.Column{{Name: "a"}},
+		Rows:    []driver.Row{{driver.Int(1)}},
+		Stats:   driver.Stats{RowsAffected: -1, Duration: time.Millisecond, Warnings: []string{"source o (shop): 3 rows", "odd\x1bname"}},
+	}
+	if out := render(t, "table", r); !strings.HasSuffix(out, "1 row · 1ms\nsource o (shop): 3 rows\nodd\\x1bname\n") {
+		t.Errorf("table: %q", out)
+	}
+	if out := render(t, "json", r); !strings.Contains(out, "\"warnings\": [\n      \"source o (shop): 3 rows\",\n      \"odd\\u001bname\"\n    ]") {
+		t.Errorf("json: %s", out)
+	}
+	plain := &query.Result{Columns: []driver.Column{{Name: "a"}}, Stats: driver.Stats{RowsAffected: -1}}
+	if out := render(t, "json", plain); strings.Contains(out, "warnings") {
+		t.Errorf("json without warnings: %s", out)
+	}
+}
+
 func TestExplainOutput(t *testing.T) {
 	r := &query.Result{Plan: &driver.Plan{Format: "text", Text: "Seq Scan"}}
 	if got := render(t, "table", r); got != "Seq Scan\n" {

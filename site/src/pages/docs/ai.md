@@ -52,8 +52,9 @@ Problems with keys, models or providers are covered in
 
 - **Read-only queries.** The assistant's query tools run only on connections whose driver has the
   read-only guard, always with the read-only flag, a 30 second timeout and a row cap.
-- **One connection.** The tools reach only the connection of the conversation and refuse any
-  other name.
+- **Only the conversation's connections.** The tools reach only the connection of the
+  conversation, plus the ones you add with `:ai scope` or a comma-separated `tobira ask` list for
+  [cross-source queries](/docs/cross-source/), and refuse any other name.
 - **You decide what leaves.** `send_rows` decides whether row data may reach the model. The
   default, `ask`, asks you each time.
 - **No secrets in prompts.** DDL is never sent, every string is redacted against the connection's

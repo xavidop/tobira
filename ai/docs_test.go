@@ -206,7 +206,7 @@ func TestReadmeAIAndMCPClaims(t *testing.T) {
 	all := []string{
 		tools.NameListConnections, tools.NameListNamespaces, tools.NameListCollections,
 		tools.NameDescribe, tools.NameSample, tools.NameQuery, tools.NameExplain,
-		tools.NameSimilar, tools.NameExecute,
+		tools.NameSimilar, tools.NameFederate, tools.NameExecute,
 	}
 	named := map[string]bool{}
 	for _, m := range regexp.MustCompile("`([a-z_]+)`").FindAllStringSubmatch(bullet, -1) {

@@ -28,6 +28,9 @@ type AssistantDeps struct {
 	// DevMode runs Genkit in dev mode for the Dev UI; only `tobira ai dev`
 	// sets it.
 	DevMode bool
+	// MaxSourceRows is federate.max_source_rows, for the federate tool; 0
+	// means the engine's default.
+	MaxSourceRows int
 }
 
 // assistantError is a factory error with its message redacted. It unwraps
@@ -56,6 +59,7 @@ func (a *app) buildAssistantMode(ctx context.Context, cfg *config.Config, mgr *s
 	asst, err := a.deps.NewAssistant(ctx, *cfg.AI, AssistantDeps{
 		Manager: mgr, History: hist, Secrets: a.deps.Resolver, Logger: log, Getenv: a.deps.Getenv,
 		PromptDir: config.PromptDir(a.deps.Getenv, a.deps.Home), DevMode: dev,
+		MaxSourceRows: cfg.FederateMaxSourceRows(),
 	})
 	if err != nil {
 		e := &assistantError{msg: driver.RedactMessage(err.Error(), driver.ConnConfig{})}

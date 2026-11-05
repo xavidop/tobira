@@ -13,6 +13,7 @@ func serveMCP(ctx context.Context, o cli.MCPOptions) error {
 	opts := mcpserver.Options{
 		Manager: o.Manager, History: o.History, Policy: o.Policy, Version: o.Version,
 		Stdin: o.Stdin, Stdout: o.Stdout, Logger: o.Logger, Unavailable: o.Unavailable,
+		MaxSourceRows: o.MaxSourceRows,
 	}
 	if o.HTTP == nil {
 		return mcpserver.Serve(ctx, opts)

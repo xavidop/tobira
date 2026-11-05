@@ -13,6 +13,6 @@ import (
 func newAssistant(ctx context.Context, cfg config.AI, d cli.AssistantDeps) (assistant.Assistant, error) {
 	return ai.New(ctx, cfg, ai.Deps{
 		Manager: d.Manager, History: d.History, Secrets: d.Secrets, Logger: d.Logger, Getenv: d.Getenv,
-		PromptDir: d.PromptDir, DevMode: d.DevMode,
+		PromptDir: d.PromptDir, DevMode: d.DevMode, MaxSourceRows: d.MaxSourceRows,
 	})
 }

@@ -120,6 +120,31 @@ credentials masked.
 | `:similar <text>` | On a vector collection, the rows nearest to a text, in a new tab. `S` on a row finds the rows nearest to it. See [vectors](/docs/tui/kind-views/#vectors) |
 | `:reload` | Also refreshes the names completion offers |
 
+## Cross-source queries
+
+A buffer that starts with `-- @source` directives is one [cross-source query](/docs/cross-source/):
+each directive names a connection of the session and a native query for it, and the rest of the
+buffer is one SQLite statement over the alias tables.
+
+```sql
+-- @source orders = local-pg/public: select user_id, total from orders where paid
+-- @source users = crm: select id, name from users
+select u.name, count(*) as n, sum(o.total) as spent
+from orders o join users u on u.id = o.user_id group by u.name order by spent desc
+```
+
+- `ctrl+enter`, `F5`, `alt+enter` and `shift+F5` all run the whole buffer: the directives decide
+  where each part runs, so the connection under the sidebar cursor is not involved and need not be
+  selected. The editor highlights the buffer as SQLite while it holds a directive.
+- The result opens in a tab labelled `federated`, with the usual row limit; nothing in it is edited
+  inline. The tab's stats list how many rows each source staged.
+- `:explain` shows each source with its connection and query, then the final statement, and
+  contacts no database.
+- Every source runs read-only, whatever its connection allows, and a cross-source query never runs
+  inside `:tx`: it is refused while a transaction is open on any connection it names.
+- The run is recorded in the [query history](/docs/history/) once per source, on that source's
+  connection, and once as a whole under `federated`.
+
 ## Known limitations
 
 Highlighting has one known display limitation. To keep typing fast in large buffers, each edit

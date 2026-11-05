@@ -59,5 +59,6 @@ grid stays as it was.
 | `:ask! <question>` | Open the AI panel and ask for an answer; the assistant may run read-only queries |
 | `:explain-results` | Ask the AI panel to explain the active result tab |
 | `:ai execute on\|off` | Let AI answers run writes on this connection only, each one confirmed with `y`. Refused on read-only connections and while a `:tx` is open on the connection. |
+| `:ai scope <name>[,<name>]\|off` | Add other connections to the AI conversation, so the assistant may propose and run [cross-source queries](/docs/cross-source/); `off` keeps the panel's connection alone |
 
 The keys of the AI panel are on [Using the assistant](/docs/ai/using/#the-terminal-ui-panel).

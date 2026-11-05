@@ -6,7 +6,7 @@ title: Configuration
 # Configuration
 
 tobira reads one YAML file with your named connections and a few optional sections: `tui:`,
-`ai:`, `mcp:`, `plugins:` and `history:`. A missing file is not an error; it is an empty config. You
+`ai:`, `mcp:`, `plugins:`, `history:` and `federate:`. A missing file is not an error; it is an empty config. You
 can edit the file by hand, or manage connections from the [terminal UI and `tobira connections`](/docs/connections/).
 
 Any other top-level key is ignored with a warning naming its line (and the section you probably
@@ -189,6 +189,19 @@ Optional. A value of the wrong type and an unknown key under `history:` are load
 - Missing directories are created with mode 0700, and the file with mode 0600.
 - When the config file cannot load at all, `tobira history` and `tobira query <dsn>` still work
   with the default path, after one warning line.
+
+## The federate section
+
+```yaml
+federate:
+  max_source_rows: 10000   # rows staged per source of a cross-source query
+```
+
+Optional. A value of the wrong type and an unknown key under `federate:` are load errors.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `max_source_rows` | `10000` | How many rows each `@source` of a [cross-source query](/docs/cross-source/) stages before the join; a source with more rows is cut and the result says so. An integer from 1 to 1,000,000. `tobira federate --max-source-rows` replaces it for one run. |
 
 ## Passwords and secrets
 

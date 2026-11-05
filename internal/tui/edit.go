@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/xavidop/tobira/internal/federate"
 	"github.com/xavidop/tobira/internal/query"
 	"github.com/xavidop/tobira/internal/tui/keymap"
 )
@@ -38,9 +39,7 @@ func (a *Model) syncEditorConn() {
 	if conn == a.edConn {
 		// The same name may now be another driver (an edit or :reload):
 		// keep the lexer and the statement splitter in step.
-		if d := a.mgr.State(conn).Info.Dialect; d != a.ed.Dialect() {
-			a.ed.SetDialect(d)
-		}
+		a.syncDialect()
 		return
 	}
 	if a.edConn != "" {
@@ -50,8 +49,22 @@ func (a *Model) syncEditorConn() {
 	b := a.buffers[conn]
 	a.ed.SetValue(b.text)
 	a.ed.SetCursor(b.cursor)
-	a.ed.SetDialect(a.mgr.State(conn).Info.Dialect)
 	a.edConn = conn
+	a.syncDialect()
+}
+
+// syncDialect keeps the editor's lexer and statement splitter in step with
+// the buffer: a cross-source statement (@source directives) ends in SQLite
+// SQL, whatever the connection speaks; any other buffer is in the
+// connection's own dialect.
+func (a *Model) syncDialect() {
+	d := a.mgr.State(a.edConn).Info.Dialect
+	if federate.IsFederated(a.ed.Value()) {
+		d = federate.Dialect
+	}
+	if d != a.ed.Dialect() {
+		a.ed.SetDialect(d)
+	}
 }
 
 // openEditor opens the editor, focused.
@@ -121,6 +134,9 @@ func (a *Model) editorKey(k tea.KeyPressMsg) tea.Cmd {
 	ver, cur := a.ed.Version(), a.ed.Cursor()
 	var cmd tea.Cmd
 	a.ed, cmd = a.ed.Update(k)
+	if a.ed.Version() != ver {
+		a.syncDialect() // typing or deleting a directive changes the dialect
+	}
 	return tea.Batch(cmd, a.afterEditorKey(k.Text != "", ver, cur))
 }
 

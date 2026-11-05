@@ -27,6 +27,7 @@ The [Quick start](/docs/quickstart/) walks through a first session.
 |---|---|
 | Browse tables and collections, filter, sort and copy rows in a terminal UI | [Terminal UI](/docs/tui/) |
 | Write queries with completion, result tabs and history | [Query editor](/docs/editor/) |
+| Join rows from two or more databases in one query | [Cross-source queries](/docs/cross-source/) |
 | Edit rows inline, inside a transaction if you want | [Editing rows](/docs/editing/) |
 | Run one query from a script, as a table, JSON, NDJSON or CSV | [`tobira query`](/docs/cli/query/) |
 | Export a result to csv, json or ndjson | [Export](/docs/export/) |

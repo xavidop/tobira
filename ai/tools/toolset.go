@@ -29,6 +29,10 @@ const (
 	NameQuery           = "query"
 	NameExplain         = "explain"
 	NameExecute         = "execute"
+	// NameFederate is the cross-source tool (federate.go). It is not in
+	// Read: it is offered only where a turn may name several connections
+	// (see Federatable and FederateTool).
+	NameFederate = "federate"
 )
 
 // The limits of every tool call.
@@ -101,6 +105,12 @@ type ToolDeps struct {
 	// tools refuse them with it, without opening anything, and
 	// list_connections reports them with status unavailable.
 	Unavailable map[string]string
+	// MaxSourceRows caps the rows the federate tool stages from each source
+	// of a cross-source statement; not positive means the engine's default.
+	MaxSourceRows int
+	// Registry holds the sqlite driver the federate tool joins in; nil means
+	// driver.Default.
+	Registry *driver.Registry
 }
 
 // Toolset is the tools of one assistant session. Row consent given for the
@@ -119,6 +129,9 @@ type Toolset struct {
 	read    []ai.ToolRef
 	similar ai.ToolRef
 	execute ai.ToolRef
+	// federate is the cross-source tool, offered where a turn may name
+	// several connections (see Federatable).
+	federate ai.ToolRef
 
 	// fallbackEvents, when set, gives the callbacks of a call whose context
 	// carries none (see WithEvents). Only tests set it: production turns
@@ -153,6 +166,7 @@ func NewToolset(deps ToolDeps) *Toolset {
 	}
 	t.similar = newTool(NameSimilar, "Find the rows of a vector collection nearest to a vector or to a text (embedded with the configured embedder), read-only. Results carry a _distance column, nearest first.", t.Similar)
 	t.execute = newTool(NameExecute, "Run a statement that may write. The user must confirm every call; refused on read-only connections.", t.Exec)
+	t.federate = newTool(NameFederate, "Run one read-only query over several connections: a cross-source statement whose '-- @source <alias> = <connection>[/<namespace>]: <native query>' lines each stage rows from one connection, read-only, and whose final SQLite statement joins the alias tables. Every source is capped, so filter and aggregate in the source queries.", t.Federate)
 	return t
 }
 
