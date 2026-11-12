@@ -3,7 +3,7 @@ module github.com/xavidop/tobira/ai
 go 1.26.10
 
 require (
-	cloud.google.com/go/auth v0.24.2
+	cloud.google.com/go/auth v0.24.3
 	github.com/anthropics/anthropic-sdk-go v1.84.0
 	github.com/firebase/genkit/go v1.14.0
 	github.com/goccy/go-yaml v1.19.2
