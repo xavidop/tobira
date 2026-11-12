@@ -5,7 +5,7 @@ go 1.26.10
 replace github.com/xavidop/tobira => ../..
 
 require (
-	cloud.google.com/go/auth v0.24.2
+	cloud.google.com/go/auth v0.24.3
 	cloud.google.com/go/firestore v1.29.2
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/xavidop/tobira v0.0.0-00010101000000-000000000000
