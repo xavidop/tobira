@@ -5,7 +5,7 @@ go 1.26.10
 replace github.com/xavidop/tobira => ../..
 
 require (
-	github.com/snowflakedb/gosnowflake/v2 v2.3.0
+	github.com/snowflakedb/gosnowflake/v2 v2.4.0
 	github.com/testcontainers/testcontainers-go v0.44.0
 	github.com/xavidop/tobira v0.0.0-00010101000000-000000000000
 	go.uber.org/goleak v1.3.0
