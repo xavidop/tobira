@@ -1,6 +1,6 @@
 module github.com/xavidop/tobira/examples/mcp-client
 
-go 1.26.10
+go 1.26.11
 
 require github.com/mark3labs/mcp-go v1.5.0
 

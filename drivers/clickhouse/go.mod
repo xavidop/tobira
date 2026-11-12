@@ -1,6 +1,6 @@
 module github.com/xavidop/tobira/drivers/clickhouse
 
-go 1.26.10
+go 1.26.11
 
 replace github.com/xavidop/tobira => ../..
 
