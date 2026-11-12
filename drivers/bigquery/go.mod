@@ -1,6 +1,6 @@
 module github.com/xavidop/tobira/drivers/bigquery
 
-go 1.26.10
+go 1.26.11
 
 replace github.com/xavidop/tobira => ../..
 

@@ -1,6 +1,6 @@
 module github.com/xavidop/tobira/drivers/chroma
 
-go 1.26.10
+go 1.26.11
 
 require (
 	github.com/testcontainers/testcontainers-go v0.45.0
