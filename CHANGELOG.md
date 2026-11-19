@@ -2,6 +2,13 @@
 
 All notable changes to tobira are listed here, newest first. Versions follow [Semantic Versioning](https://semver.org/). Each new release is added at the top, with notes generated from the commit messages.
 
+## [1.7.1](https://github.com/xavidop/tobira/compare/v1.7.0...v1.7.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* **deps:** tidy the plugin host test plugin after the go dependency bump ([#169](https://github.com/xavidop/tobira/issues/169)) ([6a82176](https://github.com/xavidop/tobira/commit/6a82176e1a6c60a7f83c7583e1ea86d4d7613ff9)), closes [#168](https://github.com/xavidop/tobira/issues/168)
+
 # [1.7.0](https://github.com/xavidop/tobira/compare/v1.6.1...v1.7.0) (2026-11-05)
 
 
