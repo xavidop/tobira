@@ -8,7 +8,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.45.0
 	github.com/testcontainers/testcontainers-go/modules/mongodb v0.45.0
 	github.com/xavidop/tobira v0.0.0-00010101000000-000000000000
-	go.mongodb.org/mongo-driver/v2 v2.10.0
+	go.mongodb.org/mongo-driver/v2 v2.10.1
 	go.uber.org/goleak v1.3.0
 )
 
