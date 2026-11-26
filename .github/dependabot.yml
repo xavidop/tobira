@@ -77,8 +77,10 @@ updates:
       - "/examples/mcp-client"
       # Plugin SDK (own go.mod; hashicorp/go-plugin and gRPC, imported by external driver plugins)
       - "/plugin/sdk"
-      # Plugin host test plugin (own go.mod; built by plugin/host and cmd/tobira
-      # tests, so it must track the grpc/protobuf versions of the modules above)
+      # Plugin host test plugin (own go.mod; built by the plugin/host,
+      # internal/cli and cmd/tobira tests). Dependabot bumps its direct
+      # dependencies only: the tests build it through internal/plugintest,
+      # which takes the indirect ones from the root and plugin/sdk modules.
       - "/plugin/host/testdata/plugin"
     schedule: { interval: weekly }
     groups:

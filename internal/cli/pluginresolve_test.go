@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -16,6 +15,7 @@ import (
 	"github.com/xavidop/tobira/internal/assistant/assistanttest"
 	"github.com/xavidop/tobira/internal/cli"
 	"github.com/xavidop/tobira/internal/config"
+	"github.com/xavidop/tobira/internal/plugintest"
 	"github.com/xavidop/tobira/internal/tui"
 )
 
@@ -38,12 +38,7 @@ func realPlugin(t *testing.T, dir, name string) {
 			return
 		}
 		testPluginBin = filepath.Join(out, "plugin")
-		cmd := exec.Command("go", "build", "-o", testPluginBin, ".")
-		cmd.Dir = filepath.Join("..", "..", "plugin", "host", "testdata", "plugin")
-		cmd.Env = append(os.Environ(), "GOWORK=off")
-		if b, err := cmd.CombinedOutput(); err != nil {
-			testPluginErr = errors.New(err.Error() + "\n" + string(b))
-		}
+		testPluginErr = plugintest.Build(filepath.Join("..", ".."), testPluginBin)
 	})
 	if testPluginErr != nil {
 		t.Fatalf("build the test plugin: %v", testPluginErr)

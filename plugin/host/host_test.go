@@ -8,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -22,6 +21,7 @@ import (
 
 	"github.com/xavidop/tobira/driver"
 	"github.com/xavidop/tobira/drivertest"
+	"github.com/xavidop/tobira/internal/plugintest"
 	"github.com/xavidop/tobira/plugin/convert"
 	"github.com/xavidop/tobira/plugin/host"
 )
@@ -48,11 +48,8 @@ func run(m *testing.M) int {
 		exe = ".exe"
 	}
 	pluginBin = filepath.Join(dir, "tobira-driver-"+pluginName+exe)
-	cmd := exec.Command("go", "build", "-o", pluginBin, ".")
-	cmd.Dir = filepath.Join("testdata", "plugin")
-	cmd.Env = append(os.Environ(), "GOWORK=off")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "build the test plugin: %v\n%s", err, out)
+	if err := plugintest.Build(filepath.Join("..", ".."), pluginBin); err != nil {
+		fmt.Fprintf(os.Stderr, "build the test plugin: %v\n", err)
 		return 1
 	}
 	return m.Run()
