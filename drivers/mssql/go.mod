@@ -5,7 +5,7 @@ go 1.26.11
 replace github.com/xavidop/tobira => ../..
 
 require (
-	github.com/microsoft/go-mssqldb v1.11.2
+	github.com/microsoft/go-mssqldb v1.12.0
 	github.com/testcontainers/testcontainers-go v0.45.0
 	github.com/testcontainers/testcontainers-go/modules/mssql v0.45.0
 	github.com/xavidop/tobira v0.0.0-00010101000000-000000000000

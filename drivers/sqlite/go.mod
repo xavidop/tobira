@@ -5,7 +5,7 @@ go 1.26.11
 require (
 	github.com/xavidop/tobira v0.0.0-00010101000000-000000000000
 	go.uber.org/goleak v1.3.0
-	modernc.org/sqlite v1.62.0
+	modernc.org/sqlite v1.63.0
 )
 
 require (
@@ -15,6 +15,7 @@ require (
 	github.com/ncruces/go-strftime v1.1.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/stretchr/testify v1.12.1 // indirect
+	go.yaml.in/yaml/v3 v3.0.6 // indirect
 	golang.org/x/mod v0.43.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect
 	modernc.org/libc v1.80.1 // indirect

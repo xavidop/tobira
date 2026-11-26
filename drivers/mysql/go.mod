@@ -3,7 +3,7 @@ module github.com/xavidop/tobira/drivers/mysql
 go 1.26.11
 
 require (
-	github.com/go-sql-driver/mysql v1.10.1
+	github.com/go-sql-driver/mysql v1.10.2
 	github.com/testcontainers/testcontainers-go v0.45.0
 	github.com/testcontainers/testcontainers-go/modules/mysql v0.45.0
 	github.com/xavidop/tobira v0.0.0-00010101000000-000000000000
