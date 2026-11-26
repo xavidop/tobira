@@ -17,6 +17,8 @@ import (
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/mark3labs/mcp-go/mcp"
+
+	"github.com/xavidop/tobira/internal/plugintest"
 )
 
 // pluginEnv builds plugin/host's test plugin (the drivertest Fake with the
@@ -32,11 +34,8 @@ func pluginEnv(t *testing.T, env []string, extra string) []string {
 	if runtime.GOOS == "windows" {
 		exe = ".exe"
 	}
-	cmd := exec.Command("go", "build", "-o", filepath.Join(dir, "tobira-driver-real"+exe), ".")
-	cmd.Dir = filepath.Join("..", "..", "plugin", "host", "testdata", "plugin")
-	cmd.Env = append(os.Environ(), "GOWORK=off")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("build the test plugin: %v\n%s", err, out)
+	if err := plugintest.Build(filepath.Join("..", ".."), filepath.Join(dir, "tobira-driver-real"+exe)); err != nil {
+		t.Fatalf("build the test plugin: %v", err)
 	}
 	conns := "connections:\n  - name: plug\n    dsn: real://x\n"
 	if runtime.GOOS != "windows" {
